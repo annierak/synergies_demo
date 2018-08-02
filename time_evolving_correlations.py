@@ -8,7 +8,15 @@ import itertools
 import time
 import matplotlib.cm
 
-fly = flb.NetFly(1542,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
+
+fly_num = 1542
+
+try:
+    fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
+except(OSError):
+    fly = flb.NetFly(fly_num)
+
+
 # fly = flb.NetFly(1538,rootpath='/home/annie/work/programming/fly_muscle_data/')
 
 flydf = fly.construct_dataframe()
