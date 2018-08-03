@@ -59,7 +59,7 @@ ax1 = plt.subplot(1,2,1)
 # fig.canvas.flush_events()
 title_text =plt.title(' ')
 
-corr_values_by_t = np.zeros((40,steps_per_window))
+corr_values_by_t = np.zeros((22*(23)/2,steps_per_window))
 lines = plt.plot(corr_values_by_t.T,color=colormap)
 for loc,line in zip(np.linspace(0,1,len(lines)),lines):
     line.set_color(colormap(loc))
@@ -81,8 +81,8 @@ while t<t_stop:
 
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
-    # print(off_muscle_inds)
-    state_mtrx = state_mtrx[~off_muscle_inds]
+    # Set them to a very small amt of activity so nan's are not created
+    state_mtrx[off_muscle_inds] = 1e-8
     # print(state_mtrx[4,1:50])
     centered_mtrx = state_mtrx - np.mean(state_mtrx,axis = 1)[:,None]
     # print(np.std(centered_mtrx,axis = 1))
@@ -99,8 +99,7 @@ while t<t_stop:
         itertools.product(muscle_cols,muscle_cols))]
 
     muscle_tuple_matrix = np.reshape(muscle_tuple_matrix,(muscle_count,muscle_count,2))
-    unique_corr_values = np.unique(cor_mtrx)
-    corr_values = np.concatenate((unique_corr_values[0:20],unique_corr_values[-21:-1]))
+    corr_values = util.symm_matrix_half(cor_mtrx)
 
     if counter<steps_per_window:
         corr_values_by_t[:,counter] = corr_values
