@@ -150,12 +150,12 @@ ax2.set_position([0.55,0.40,0.45,0.45])
 while t<duration:
     # print(counter)
     # print(t)
-    time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
-    state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     text = flydf.iloc[counter]['stimulus']
     ax1.set_title(text,fontsize=12)
     # time.sleep(5)
 
+    time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+    state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
     # Set them to a very small amt of activity so nan's are not created
