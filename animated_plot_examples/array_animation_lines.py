@@ -32,6 +32,7 @@ while t<simulation_time:
         # print(a[row,:])
         line.set_ydata(a[row,:])
     plt.draw()
+    plt.pause(0.01)
     writer.grab_frame()
     t+=dt
 

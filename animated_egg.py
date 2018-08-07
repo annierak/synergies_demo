@@ -8,9 +8,22 @@ import rsvg
 import networkx as nx
 
 fly_num = 1548
-corr_window_size = 60
+corr_window_size = 5
 frames_per_step=5
 t=0
+
+def render_svg_to_png(svg_data,filename):
+    # Render
+    svg = rsvg.Handle(data=svg_data)
+    img = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+    svg.props.width,
+    svg.props.height)
+    ctx = cairo.Context(img)
+    svg.render_cairo(ctx)
+
+    img.write_to_png(filename)
+
+
 
 try:
     fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
@@ -58,28 +71,18 @@ for cull in cull_list:
 #print(sorted_keys)
 #raw_input(' ')
 
-def render_svg_to_png(svg_data,filename):
-    # Render
-    svg = rsvg.Handle(data=svg_data)
-    img = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-      svg.props.width,
-      svg.props.height)
-    ctx = cairo.Context(img)
-    svg.render_cairo(ctx)
-
-    img.write_to_png(filename)
-
-fig = plt.figure()
+plt.ion()
+fig = plt.figure(1,figsize=(5,8))
 filename = 'f_egg'
-layout = fifi.FigureLayout('graph_layout.svg',make_mplfigures=True)
+layout = fifi.FigureLayout('graph_layout.svg')#,make_mplfigures=True)
 metadata = {'title' : filename,}
-im = plt.imshow(np.random.randn(10,10))
+# im = plt.imshow(np.random.randn(10,10))
 counter=0
 
 
 frame_rate = 20
 counter =0
-simulation_time = 15
+simulation_time = 2*60
 
 #im = plt.imshow(np.random.randn(10,10))
 #counter=0
@@ -87,14 +90,20 @@ FFMpegWriter = animate.writers['ffmpeg']
 writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
 writer.setup(fig, filename+'.mp4', 500)
 
+muscle_labels = np.zeros_like(filtered_muscle_cols)
+for i,muscle in enumerate(filtered_muscle_cols):
+    n1,n2 = muscle.split('_')
+    muscle_labels[i] = '%s_%s'%(n2[0].capitalize(), n1)
+
 # def updatefig(*args):
 while t<simulation_time:
     global counter,t
-    print(counter)
+    # print(counter)
+    print(t)
     time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
-    # state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
-    state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
-    print(np.shape(state_mtrx))
+    state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
+    # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
+    # print(np.shape(state_mtrx))
     #state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
@@ -106,8 +115,8 @@ while t<simulation_time:
 
 
     G = nx.Graph()
-    for i,lbl1 in enumerate(filtered_muscle_cols):
-        for j,lbl2 in enumerate(filtered_muscle_cols):
+    for i,lbl1 in enumerate(muscle_labels):
+        for j,lbl2 in enumerate(muscle_labels):
             G.add_edge(lbl1,lbl2,weight = cor_mtrx[i,j])
 
     c_ex = layout.pathspecs['excitatory'].mplkwargs()['edgecolor']
@@ -116,17 +125,14 @@ while t<simulation_time:
 
     h = float(layout.layout_uh)
     pos_dict = {}
-    print('here')
+    # print('here')
     for n in G.nodes_iter():
-        n1, n2 = n.split('_')
-        n_s = '%s_%s'%(n2[0].capitalize(), n1)
-        #n_s = '%s_%s'%(n[0][0].capitalize(),n[1])
-        cx = float(layout.pathspecs[n_s]['cx'])
-        cy = h-float(layout.pathspecs[n_s]['cy'])
+        cx = float(layout.pathspecs[n]['cx'])
+        cy = h-float(layout.pathspecs[n]['cy'])
         try:
-            if 'transform' in layout.pathspecs[n_s].keys():
+            if 'transform' in layout.pathspecs[n].keys():
                 # print(n_s)
-                t1 = fifi.svg_to_axes.parse_transform(layout.pathspecs[n_s]['transform'])
+                t1 = fifi.svg_to_axes.parse_transform(layout.pathspecs[n]['transform'])
                 p = np.dot(t1,np.array([cx,cy,1]))
                 pos_dict[n] = (p[0],p[1])
             else:
@@ -135,32 +141,33 @@ while t<simulation_time:
             print n
 
     edges= G.edges_iter()
-    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.6/100000000000. for e in edges]
-    print(pos_dict)
+    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.4/1e5 for e in edges]
+    # print(pos_dict)
     # nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
     #         font_color = 'r', with_labels= False, width = weights,
     #         edge_color = colors, node_color = 'k', alpha = 0.1)
+    plt.figure(1)
     nx.draw(G, pos = pos_dict,
             font_color = 'r', with_labels= True, width = weights,
             edge_color = colors, node_color = 'k', alpha = 0.1)
-    plt.show()
-    raw_input(' ')
+    # raw_input(' ')
+    plt.pause(0.01)
 
-    layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
-    layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
+    # layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
+    # layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
 
-    print('here1')
-    layout.save(filename+'.svg',)
-    svg_data = open(filename+'.svg', 'r').read()
-    render_svg_to_png(svg_data,filename+'_'+str(counter)+'.png')
+    # print('here1')
+    # layout.save(filename+'.svg',)
+    # svg_data = open(filename+'.svg', 'r').read()
+    # render_svg_to_png(svg_data,filename+'_'+str(counter)+'.png')
     # imported_image = plt.imread(filename+'.png',format='png')
     # im.set_array(imported_image)
-    print('here2')
+    # print('here2')
     counter+=1
     # print(np.shape(imported_image))
-    # writer.grab_frame()
+    writer.grab_frame()
     # return im,
     t+=dt
 writer.finish()
 # ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
-plt.show()
+# plt.show()
