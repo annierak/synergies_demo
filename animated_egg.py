@@ -9,7 +9,7 @@ import networkx as nx
 
 fly_num = 1548
 corr_window_size = 1
-
+frames_per_step=5
 t=0
 
 try:
@@ -18,6 +18,8 @@ except(OSError):
     fly = flb.NetFly(fly_num)
 
 flydf = fly.construct_dataframe()
+
+dt = frames_per_step*(flydf['t'][1]-flydf['t'][0])
 
 filtered_muscle_cols = \
 ['iii1_left', 'iii3_left',
@@ -69,13 +71,20 @@ def render_svg_to_png(svg_data,filename):
 
 fig = plt.figure()
 filename = 'f_egg'
-layout = fifi.FigureLayout('graph_layout.svg')
+layout = fifi.FigureLayout('graph_layout.svg',make_mplfigures=True)
 im = plt.imshow(np.random.randn(10,10))
+counter=0
 
-def updatefig(*args):
+# def updatefig(*args):
+for i in range(100):
 
-    #time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
-    state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
+    global counter,t
+    t+=dt
+    print(counter)
+    time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+    state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
+    # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
+    print(np.shape(state_mtrx))
     #state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
@@ -97,6 +106,7 @@ def updatefig(*args):
 
     h = float(layout.layout_uh)
     pos_dict = {}
+    print('here')
     for n in G.nodes():
         n1, n2 = n.split('_')
         n_s = '%s_%s'%(n2[0].capitalize(), n1)
@@ -105,6 +115,7 @@ def updatefig(*args):
         cy = h-float(layout.pathspecs[n_s]['cy'])
         try:
             if 'transform' in layout.pathspecs[n_s].keys():
+                # print(n_s)
                 t1 = fifi.svg_to_axes.parse_transform(layout.pathspecs[n_s]['transform'])
                 p = np.dot(t1,np.array([cx,cy,1]))
                 pos_dict[n] = (p[0],p[1])
@@ -122,12 +133,16 @@ def updatefig(*args):
     layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
     layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
 
+    print('here1')
     layout.save(filename+'.svg',)
     svg_data = open(filename+'.svg', 'r').read()
     render_svg_to_png(svg_data,filename+'.png')
     imported_image = plt.imread(filename+'.png',format='png')
     im.set_array(imported_image)
-    return im,
+    print('here2')
+    counter+=1
+    print(np.shape(imported_image))
+    # return im,
 
-ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
+# ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
 plt.show()
