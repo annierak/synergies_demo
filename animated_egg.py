@@ -30,6 +30,32 @@ filtered_muscle_cols = \
  'b1_right', 'b2_right', 'b3_right' ]
 
 
+general_sorted_keys = sorted(fly.ca_cam_left_model_fits.keys())
+print(sorted(fly.ca_cam_left_model_fits.keys()))
+
+sorted_keys = []
+
+for key in general_sorted_keys:
+    key2= key+'_right'
+    key3= key+'_left'
+    sorted_keys.append(key2)
+    sorted_keys.append(key3)
+
+cull_list = [('left', 'bkg'),('right', 'bkg'),
+            ('left', 'iii24'),('right', 'iii24'),
+            ('left', 'nm'),('right', 'nm'),
+            ('left', 'pr'),('right', 'pr'),
+            ('left', 'tpd'),('right', 'tpd')]
+
+for cull in cull_list:
+    sorted_keys.remove(cull[1]+'_'+cull[0])
+#[sorted_keys.remove(cull) for cull in cull_list]
+
+
+
+#print(sorted_keys)
+#raw_input(' ')
+
 def render_svg_to_png(svg_data,filename):
     # Render
     svg = rsvg.Handle(data=svg_data)
@@ -48,8 +74,9 @@ im = plt.imshow(np.random.randn(10,10))
 
 def updatefig(*args):
 
-    time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
-    state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
+    #time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+    state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
+    #state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
     # Set them to a very small amt of activity so nan's are not created
@@ -66,12 +93,14 @@ def updatefig(*args):
 
     c_ex = layout.pathspecs['excitatory'].mplkwargs()['edgecolor']
     c_in = layout.pathspecs['inhibitory'].mplkwargs()['edgecolor']
-    colors = [{True:c_ex,False:c_in}[G[e[0]][e[1]]['weight']>0.] for e in G.edges_iter()]
+    colors = [{True:c_ex,False:c_in}[G[e[0]][e[1]]['weight']>0.] for e in G.edges()]
 
     h = float(layout.layout_uh)
     pos_dict = {}
-    for n in G.nodes_iter():
-        n_s = '%s_%s'%(n[0][0].capitalize(),n[1])
+    for n in G.nodes():
+        n1, n2 = n.split('_')
+        n_s = '%s_%s'%(n2[0].capitalize(), n1)
+        #n_s = '%s_%s'%(n[0][0].capitalize(),n[1])
         cx = float(layout.pathspecs[n_s]['cx'])
         cy = h-float(layout.pathspecs[n_s]['cy'])
         try:
