@@ -92,8 +92,8 @@ while t<simulation_time:
     global counter,t
     print(counter)
     time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
-    state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
-    # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
+    # state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
+    state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
     print(np.shape(state_mtrx))
     #state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
@@ -117,7 +117,7 @@ while t<simulation_time:
     h = float(layout.layout_uh)
     pos_dict = {}
     print('here')
-    for n in G.nodes():
+    for n in G.nodes_iter():
         n1, n2 = n.split('_')
         n_s = '%s_%s'%(n2[0].capitalize(), n1)
         #n_s = '%s_%s'%(n[0][0].capitalize(),n[1])
@@ -134,11 +134,17 @@ while t<simulation_time:
         except KeyError:
             print n
 
-    edges= G.edges
+    edges= G.edges_iter()
     weights = [np.abs(G[e[0]][e[1]]['weight'])**2.6/100000000000. for e in edges]
-    nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
-            font_color = 'r', with_labels= False, width = weights,
+    print(pos_dict)
+    # nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
+    #         font_color = 'r', with_labels= False, width = weights,
+    #         edge_color = colors, node_color = 'k', alpha = 0.1)
+    nx.draw(G, pos = pos_dict,
+            font_color = 'r', with_labels= True, width = weights,
             edge_color = colors, node_color = 'k', alpha = 0.1)
+    plt.show()
+    raw_input(' ')
 
     layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
     layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
