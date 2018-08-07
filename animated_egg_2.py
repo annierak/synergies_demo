@@ -1,14 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animate
+import matplotlib.animation as animation
 import figurefirst as fifi
 import flylib as flb
 import cairo
 import rsvg
 import networkx as nx
+import matplotlib.animation as animate
+
 
 fly_num = 1548
-corr_window_size = 60
+corr_window_size = 1
 frames_per_step=5
 t=0
 
@@ -69,28 +71,31 @@ def render_svg_to_png(svg_data,filename):
 
     img.write_to_png(filename)
 
-fig = plt.figure()
-filename = 'f_egg'
-layout = fifi.FigureLayout('graph_layout.svg',make_mplfigures=True)
-metadata = {'title' : filename,}
-im = plt.imshow(np.random.randn(10,10))
-counter=0
-
-
 frame_rate = 20
 counter =0
-simulation_time = 15
+simulation_time = 60
 
+
+fig = plt.figure()
+file_name = 'f_egg'
+metadata = {'title' : file_name,}
+layout = fifi.FigureLayout('graph_layout.svg',make_mplfigures=True)
 #im = plt.imshow(np.random.randn(10,10))
 #counter=0
 FFMpegWriter = animate.writers['ffmpeg']
 writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
-writer.setup(fig, filename+'.mp4', 500)
+writer.setup(fig, file_name+'.mp4', 500)
+
 
 # def updatefig(*args):
-while t<simulation_time:
+#for i in range(100):
+while t < simulation_time:
+
     global counter,t
+    t+=dt
     print(counter)
+    plt.ion()
+    fig=plt.figure()
     time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
     state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
     # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
@@ -143,18 +148,34 @@ while t<simulation_time:
     layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
     layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
 
+    # writer.grab_frame()
+    t+=dt
+
+writer.finish()
+
+'''
+    FFMpegWriter = animate.writers['ffmpeg']
+    writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
+    writer.setup(fig, file_name+'.mp4', 500)
+
+    plt.draw()
+    writer.grab_frame()
+    t+=dt
+
+    writer.finish()
+'''
+
+"""
     print('here1')
     layout.save(filename+'.svg',)
     svg_data = open(filename+'.svg', 'r').read()
-    render_svg_to_png(svg_data,filename+'_'+str(counter)+'.png')
-    # imported_image = plt.imread(filename+'.png',format='png')
-    # im.set_array(imported_image)
+    render_svg_to_png(svg_data,filename+'.png')
+    imported_image = plt.imread(filename+'.png',format='png')
+    im.set_array(imported_image)
     print('here2')
     counter+=1
-    # print(np.shape(imported_image))
-    # writer.grab_frame()
+    print(np.shape(imported_image))
     # return im,
-    t+=dt
-writer.finish()
+"""
 # ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
 plt.show()
