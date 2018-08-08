@@ -1,11 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg") #This needs to be placed before importing any sub-packages
 import matplotlib.animation as animate
 import figurefirst as fifi
 import flylib as flb
 import cairo
 import rsvg
 import networkx as nx
+import faulthandler; faulthandler.enable()
 
 fly_num = 1548
 corr_window_size = 5
@@ -20,7 +23,6 @@ def render_svg_to_png(svg_data,filename):
     svg.props.height)
     ctx = cairo.Context(img)
     svg.render_cairo(ctx)
-
     img.write_to_png(filename)
 
 
@@ -88,7 +90,7 @@ simulation_time = 2*60
 #counter=0
 FFMpegWriter = animate.writers['ffmpeg']
 writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
-writer.setup(fig, filename+'.mp4', 500)
+writer.setup(fig, filename+'.mp4', 100)
 
 muscle_labels = np.zeros_like(filtered_muscle_cols)
 for i,muscle in enumerate(filtered_muscle_cols):
@@ -147,10 +149,19 @@ while t<simulation_time:
     #         font_color = 'r', with_labels= False, width = weights,
     #         edge_color = colors, node_color = 'k', alpha = 0.1)
     plt.figure(1)
+    # print(pos_dict)
+    weights = np.array(weights)
+    weights[np.isnan(weights)]=0.
+    weights[np.isinf(weights)]=0.
+    weights = list(np.array(weights).astype(str))
+    # print(weights)
+    # print(colors)
     nx.draw(G, pos = pos_dict,
             font_color = 'r', with_labels= True, width = weights,
             edge_color = colors, node_color = 'k', alpha = 0.1)
+    plt.show()
     # raw_input(' ')
+    fig.savefig(filename+'.png')
     plt.pause(0.01)
 
     # layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
@@ -161,7 +172,9 @@ while t<simulation_time:
     # svg_data = open(filename+'.svg', 'r').read()
     # render_svg_to_png(svg_data,filename+'_'+str(counter)+'.png')
     # imported_image = plt.imread(filename+'.png',format='png')
+    plt.imread(filename+'.png',format='png')
     # im.set_array(imported_image)
+    plt.show()
     # print('here2')
     counter+=1
     # print(np.shape(imported_image))
