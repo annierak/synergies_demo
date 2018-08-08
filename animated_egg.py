@@ -84,13 +84,13 @@ counter=0
 
 frame_rate = 20
 counter =0
-simulation_time = 2*60
+simulation_time = 4*60
 
 #im = plt.imshow(np.random.randn(10,10))
 #counter=0
 FFMpegWriter = animate.writers['ffmpeg']
 writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
-writer.setup(fig, filename+'.mp4', 100)
+writer.setup(fig, filename+'.mp4', 500)
 
 muscle_labels = np.zeros_like(filtered_muscle_cols)
 for i,muscle in enumerate(filtered_muscle_cols):
@@ -143,7 +143,7 @@ while t<simulation_time:
             print n
 
     edges= G.edges_iter()
-    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.4/1e5 for e in edges]
+    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/1e5 for e in edges]
     # print(pos_dict)
     # nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
     #         font_color = 'r', with_labels= False, width = weights,
@@ -156,9 +156,11 @@ while t<simulation_time:
     weights = list(np.array(weights).astype(str))
     # print(weights)
     # print(colors)
+    # plt.gcf().canvas.flush_events()
+    plt.clf()
     nx.draw(G, pos = pos_dict,
-            font_color = 'r', with_labels= True, width = weights,
-            edge_color = colors, node_color = 'k', alpha = 0.1)
+            font_color = 'k', with_labels= True, width = weights,
+            edge_color = colors, node_color = 'k', alpha = 0.3)
     plt.show()
     # raw_input(' ')
     fig.savefig(filename+'.png')
