@@ -10,14 +10,14 @@ import matplotlib.cm
 
 
 fly_num = 1545
-groups_of_interest = ['i','b']
-side_of_interest = 'left' #Specify 'both' for both
+groups_of_interest = ['b']
+side_of_interest = 'both' #Specify 'both' for both
 
 frames_per_step = 5
 disp_window_size = 5
 corr_window_size = 1
 duration = 10*60
-start_at_stimulus = 'cl_blocks, g_x=-1, g_y=4, b_x=8, b_y=0, ch=True'
+# start_at_stimulus = 'cl_blocks, g_x=-1, g_y=4, b_x=8, b_y=0, ch=True'
 
 try:
     fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
@@ -60,14 +60,16 @@ corr_window_size = np.floor(corr_window_size/dt)*dt
 disp_window_size = np.floor(disp_window_size/dt)*dt
 
 
-stimulus_inds = flydf['stimulus']==start_at_stimulus
+# stimulus_inds = flydf['stimulus']==start_at_stimulus
+#
+# print(type(flydf['t'][stimulus_inds]))
+# print(flydf['t'][stimulus_inds][0:5])
+# print(flydf['t'][stimulus_inds][0:5].keys())
 
-print(type(flydf['t'][stimulus_inds]))
-print(flydf['t'][stimulus_inds][0:5])
-print(flydf['t'][stimulus_inds][0:5].keys())
-
-t = float(flydf['t'][stimulus_inds][0:1].tolist()[0])
-counter = flydf['t'][stimulus_inds][0:1].keys()[0]
+# t = float(flydf['t'][stimulus_inds][0:1].tolist()[0])
+t = 0.
+# counter = flydf['t'][stimulus_inds][0:1].keys()[0]
+counter = 0
 print(t,counter)
 
 time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
@@ -181,3 +183,4 @@ while t<duration:
     plt.pause(0.01)
     t+=dt
     counter+=1
+    time.sleep(0.1)
