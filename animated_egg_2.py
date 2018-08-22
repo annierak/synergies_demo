@@ -137,6 +137,39 @@ while t < simulation_time:
             else:
                 pos_dict[n]  = (cx,cy)
         except KeyError:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
             print n
 
     edges= G.edges

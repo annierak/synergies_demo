@@ -8,7 +8,7 @@ import flylib as flb
 import cairo
 import rsvg
 import networkx as nx
-import faulthandler; faulthandler.enable()
+# import faulthandler; faulthandler.enable()
 
 fly_num = 1548
 corr_window_size = 5
@@ -128,7 +128,8 @@ while t<simulation_time:
     h = float(layout.layout_uh)
     pos_dict = {}
     # print('here')
-    for n in G.nodes_iter():
+    for n in G.nodes():
+    # for n in G.nodes_iter():
         cx = float(layout.pathspecs[n]['cx'])
         cy = h-float(layout.pathspecs[n]['cy'])
         try:
@@ -142,7 +143,8 @@ while t<simulation_time:
         except KeyError:
             print n
 
-    edges= G.edges_iter()
+    # edges= G.edges_iter()
+    edges= G.edges()
     weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/1e5 for e in edges]
     # print(pos_dict)
     # nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,

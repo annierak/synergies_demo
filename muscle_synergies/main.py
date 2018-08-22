@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import flylib as flb
 import time
 import itertools
-
+import substeps
 
 fly= flb.NetFly(1380)
 
-df = fly.construct_dataframe()
+flydf = fly.construct_dataframe()
 
 #print(df.columns.values)
 
@@ -23,26 +23,35 @@ muscles = np.array(['iii1_left', 'iii3_left',
 
 D = len(muscles)
 
-synergy_time = 1  #Synergy duration
+synergy_time = 1.  #Synergy duration
 
 dt = (flydf['t'][1]-flydf['t'][0])  # time steps
 
-T = np.ceil(D/dt)  #synergy duration in time steps
+T = int(np.ceil(synergy_time/dt))  #synergy duration in time steps
 
 N = 5 #number of synergies
 
-M = np.random.randn((D, T))  #randomnly generated muscle activity 
+M = np.random.randn(D, T)  #randomnly generated muscle activity 
 
 # M = util.generate_random_muscle_activity(D,T,N)  
 # M = util.muscle_activity_empirical(T,muscles)
 
 W = substeps.initialize_W(N,D,T)
 
-c = substeps.initialize_c(N)
+c = substeps.initialize_c(N,D)
+
+error = np.inf 
+
+error_threshold = 1e-6
 
 while error>error_threshold:
-	delays = substeps.update_delay(M,W,c,T)
+	last = time.time()
+	delays = substeps.update_delay(M,W,c)
+	print(time.time()-last)
+	raw_input('here')
 	c = substeps.update_c(c)
 	W = substeps.update_W(W)
 	error = substeps.compute_error(W,c,t,M)
+
+
 

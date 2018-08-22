@@ -11,7 +11,7 @@ counter = 0
 file_name = 'example_video'
 frame_rate = 20
 times_real_time = 1 # seconds of real time / sec of video
-capture_interval = int(np.ceil(times_real_time*(1./frame_rate)/dt))
+# capture_interval = int(np.ceil(times_real_time*(1./frame_rate)/dt))
 t=0
 
 plt.ion()
@@ -32,7 +32,6 @@ while t<simulation_time:
         # print(a[row,:])
         line.set_ydata(a[row,:])
     plt.draw()
-    plt.pause(0.01)
     writer.grab_frame()
     t+=dt
 
