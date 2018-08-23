@@ -21,9 +21,17 @@ def compute_phi_s_i(M,W,t,i,s):
 		summand += np.dot(M[s,:,tao],W_t[:,tao]) #synergies W are indexed by i = 1,2,...,N muscles j = 1,2,...D column is the time
 	return summand
 
+# def shift_matrix_columns(column_shift,A):
+# 	n_rows,n_cols = np.shape(A)
+# 	padding = np.zeros((n_rows,n_cols))
+# 	double_padded = np.hstack((padding,A,padding))
+# 	starting_index = (n_cols) + (-1)*column_shift
+# 	ending_index = starting_index+n_cols
+# 	return double_padded[:,starting_index:ending_index]
+
 def shift_matrix_columns(column_shift,A,wrap_around=False):
 	#If wrap_around = True, fills the vacated spaces with the stuff that fell off
-	# otherwise fill with zeros 
+	# otherwise fill with zeros
 	print(column_shift)
 	print(np.shape(A))
 	n_rows,n_cols = np.shape(A)
@@ -69,10 +77,3 @@ def update_delay(M,W,c,S):
 			synergy_list.remove(max_synergy)
 			delays[s,max_synergy] = max_delay
 	return(delays)
-
-
-
-
-
-
-

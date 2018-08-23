@@ -5,8 +5,12 @@ import time
 import itertools
 import substeps
 
-fly= flb.NetFly(1380)
+fly_num = 1380
 
+try:
+    fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
+except(OSError):
+    fly = flb.NetFly(fly_num)
 flydf = fly.construct_dataframe()
 
 #print(df.columns.values)
@@ -21,7 +25,7 @@ muscles = np.array(['iii1_left', 'iii3_left',
  'hg1_right', 'hg2_right', 'hg3_right', 'hg4_right',
  'b1_right', 'b2_right', 'b3_right' ])
 
-S = 4 #number of episodes, indexed by s 
+S = 4 #number of episodes, indexed by s
 
 D = len(muscles) #number of muscles
 
@@ -33,16 +37,16 @@ T = int(np.ceil(synergy_time/dt))  #synergy duration in time steps
 
 N = 5 #number of synergies
 
-M = np.random.randn(S, D, T)  #randomly generated muscle activity 
+M = np.random.randn(S, D, T)  #randomly generated muscle activity
 
-# M = util.generate_random_muscle_activity(D,T,N)  
+# M = util.generate_random_muscle_activity(D,T,N)
 # M = util.muscle_activity_empirical(T,muscles)
 
-W = substeps.initialize_W(N,D,T) #size of W is N x D x T 
+W = substeps.initialize_W(N,D,T) #size of W is N x D x T
 
 c = substeps.initialize_c(S,N) #size of c is S x N
 
-error = np.inf 
+error = np.inf
 
 error_threshold = 1e-6
 
@@ -54,6 +58,3 @@ while error>error_threshold:
 	c = substeps.update_c(c)
 	W = substeps.update_W(W)
 	error = substeps.compute_error(W,c,t,M)
-
-
-
