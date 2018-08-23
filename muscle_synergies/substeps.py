@@ -21,36 +21,15 @@ def compute_phi_s_i(M,W,t,i,s):
 		summand += np.dot(M[s,:,tao],W_t[:,tao]) #synergies W are indexed by i = 1,2,...,N muscles j = 1,2,...D column is the time
 	return summand
 
-# def shift_matrix_columns(column_shift,A):
-# 	n_rows,n_cols = np.shape(A)
-# 	padding = np.zeros((n_rows,n_cols))
-# 	double_padded = np.hstack((padding,A,padding))
-# 	starting_index = (n_cols) + (-1)*column_shift
-# 	ending_index = starting_index+n_cols
-# 	return double_padded[:,starting_index:ending_index]
-
-def shift_matrix_columns(column_shift,A,wrap_around=False):
-	#If wrap_around = True, fills the vacated spaces with the stuff that fell off
-	# otherwise fill with zeros
-	print(column_shift)
-	print(np.shape(A))
+def shift_matrix_columns(column_shift,A):
 	n_rows,n_cols = np.shape(A)
-	if np.abs(column_shift)>n_cols:
-		column_shift = column_shift % n_cols
-	# print(n_rows,n_cols)
-	A_copy = np.copy(A)
-	if column_shift==0:
-		return A_copy
-	if wrap_around:
-		return np.roll(A_copy,column_shift,axis=1)
-	else:
-		if column_shift>0:
-			A_copy[:,column_shift:] = A_copy[:,:-column_shift]
-			A_copy[:,:column_shift] = np.zeros((n_rows,column_shift))
-		else:
-			A_copy[:,:column_shift] = A_copy[:,-column_shift:]
-			A_copy[:,column_shift:] = np.zeros((n_rows,-column_shift))
-		return A_copy
+	column_shift = np.sign(column_shift)*(np.abs(column_shift)%n_cols)
+	padding = np.zeros((n_rows,n_cols))
+	double_padded = np.hstack((padding,A,padding))
+	starting_index = (n_cols) + (-1)*column_shift
+	ending_index = starting_index+n_cols
+	return double_padded[:,starting_index:ending_index]
+
 
 def update_delay(M,W,c,S):
 	N,D,T = np.shape(W)
