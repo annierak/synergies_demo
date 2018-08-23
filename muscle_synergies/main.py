@@ -21,7 +21,9 @@ muscles = np.array(['iii1_left', 'iii3_left',
  'hg1_right', 'hg2_right', 'hg3_right', 'hg4_right',
  'b1_right', 'b2_right', 'b3_right' ])
 
-D = len(muscles)
+S = 4 #number of episodes, indexed by s 
+
+D = len(muscles) #number of muscles
 
 synergy_time = 1.  #Synergy duration
 
@@ -31,14 +33,14 @@ T = int(np.ceil(synergy_time/dt))  #synergy duration in time steps
 
 N = 5 #number of synergies
 
-M = np.random.randn(D, T)  #randomnly generated muscle activity 
+M = np.random.randn(S, D, T)  #randomly generated muscle activity 
 
 # M = util.generate_random_muscle_activity(D,T,N)  
 # M = util.muscle_activity_empirical(T,muscles)
 
-W = substeps.initialize_W(N,D,T)
+W = substeps.initialize_W(N,D,T) #size of W is N x D x T 
 
-c = substeps.initialize_c(N,D)
+c = substeps.initialize_c(S,N) #size of c is S x N
 
 error = np.inf 
 
@@ -46,7 +48,7 @@ error_threshold = 1e-6
 
 while error>error_threshold:
 	last = time.time()
-	delays = substeps.update_delay(M,W,c)
+	delays = substeps.update_delay(M,W,c,S) #size of delays (t) is S x N
 	print(time.time()-last)
 	raw_input('here')
 	c = substeps.update_c(c)
