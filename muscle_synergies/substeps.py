@@ -66,3 +66,21 @@ def update_delay(M,W,c,S):
 			synergy_list.remove(max_synergy)
 			delays[s,max_synergy] = max_delay
 	return delays
+
+def update_c(c):
+	S,N = np.shape(c)
+	mu_c = 1.
+	for s in range(S):
+		delta_c = -mu_c*squared_error_gradient(M[s,:,:],c[s,:],W)
+		c[s,:] += delta_c
+	return c
+
+def squared_error_gradient(M_s,c_s,W):
+	#Computes the gradient of E_s^2 wrt entries of c_s--
+	#(each dimension of c_s is a syngergy coefficent)
+	#Inputs:
+	# M_s: D x T muscle activity for that episode
+	# c_s: N synergy coefficents
+	# W : N x D x T synergies
+
+	 
