@@ -65,22 +65,47 @@ def update_delay(M,W,c,S):
 			M[s,:,:] -= scaled_shifted_max_synergy
 			synergy_list.remove(max_synergy)
 			delays[s,max_synergy] = max_delay
-	return delays
+	return delays.astype(int)
 
-def update_c(c):
+def update_c(c,M,W,delays):
 	S,N = np.shape(c)
-	mu_c = 1.
+	mu_c = 1e-3
+	c_copy = np.copy(c)
 	for s in range(S):
-		delta_c = -mu_c*squared_error_gradient(M[s,:,:],c[s,:],W)
-		c[s,:] += delta_c
-	return c
+		delta_c = -mu_c*squared_error_gradient(M[s,:,:],c[s,:],W,delays[s,:])
+		c_copy[s,:] += delta_c
+		print('delta_c'+str(delta_c))
+	return c_copy
 
-def squared_error_gradient(M_s,c_s,W):
+def squared_error_gradient(M_s,c_s,W,delays_s):
 	#Computes the gradient of E_s^2 wrt entries of c_s--
 	#(each dimension of c_s is a syngergy coefficent)
 	#Inputs:
 	# M_s: D x T muscle activity for that episode
 	# c_s: N synergy coefficents
 	# W : N x D x T synergies
+	# delay_s : N delays 
+	D,T = np.shape(M_s)
+	nabla = np.zeros_like(c_s)
+	N = len(c_s)
+	for j in range(N):
+		nabla_j_ts = np.zeros(T)
+		for t in range(T):
+			entries_by_d = 2*(M_s[:,t]-np.sum(W[:,:,t]*c_s[:,None],axis=0))*(
+				-1*(shift_matrix_columns(delays_s[j],W[j,:,:])[:,t]))
+			nabla_j_ts[t] = np.sum(entries_by_d)
+		nabla[j] = np.sum(nabla_j_ts)
+	return nabla
+
+def compute_squared_error(W,c,t,M):
+	#Returns the sum squared error across episodes as defined at the top of section 3
+	S,N = np.shape(c)
+	S,D,T = np.shape(M)
+	error = np.zeros((S,T))
+	for s in range(S):
+		for t in range(T):
+			entries_by_d = M[s,:,t]-np.sum(W[:,:,t]*c[s,:][:,None],axis=0)
+			error[s,t] = np.sum(np.square(entries_by_d))
+	return np.sum(error)
 
 	 

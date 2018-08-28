@@ -53,8 +53,27 @@ error_threshold = 1e-6
 while error>error_threshold:
 	last = time.time()
 	delays = substeps.update_delay(M,W,c,S) #size of delays (t) is S x N
+	c = substeps.update_c(c,M,W,delays)
 	print(time.time()-last)
 	raw_input('here')
-	c = substeps.update_c(c)
 	W = substeps.update_W(W)
-	error = substeps.compute_error(W,c,t,M)
+	error = substeps.compute_squared_error(W,c,t,M)
+	
+
+
+
+# class UpdaterObject(object):
+# 	def __init__(S,D,M,etc):
+# 		self.T = T
+# 		self.M = M 
+# 	def initialize_W(self,):
+# 		self.W = 
+
+# 		self.c = 
+# 	def update_c(self):
+
+# 		self.c = 
+
+
+# updaterObject = UpdaterObject(args)
+
