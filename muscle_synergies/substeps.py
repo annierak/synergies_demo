@@ -72,12 +72,23 @@ def update_c(c,M,W,delays):
 	mu_c = 1e-3
 	c_copy = np.copy(c)
 	for s in range(S):
-		delta_c = -mu_c*squared_error_gradient(M[s,:,:],c[s,:],W,delays[s,:])
+		delta_c = -mu_c*squared_error_gradient_episode(M[s,:,:],c[s,:],W,delays[s,:])
 		c_copy[s,:] += delta_c
-		print('delta_c'+str(delta_c))
+		# print('delta_c'+str(delta_c))
 	return c_copy
 
-def squared_error_gradient(M_s,c_s,W,delays_s):
+def update_W(c,M,W,delays):
+	N,D,T = np.shape(W)
+	mu_W = 1e-3
+	W_copy = np.copy(W)
+	for i in range(N):
+		for tao in range(T):
+			delta_w_i_tao = -mu_W*squared_error_gradient_total(M,c,W,delays,i,tao)
+			W_copy[i,:,tao] += delta_w_i_tao
+	return W_copy
+
+
+def squared_error_gradient_episode(M_s,c_s,W,delays_s):
 	#Computes the gradient of E_s^2 wrt entries of c_s--
 	#(each dimension of c_s is a syngergy coefficent)
 	#Inputs:
@@ -96,6 +107,35 @@ def squared_error_gradient(M_s,c_s,W,delays_s):
 			nabla_j_ts[t] = np.sum(entries_by_d)
 		nabla[j] = np.sum(nabla_j_ts)
 	return nabla
+
+def squared_error_gradient_total(M,c,W,delays,i,tao):
+
+	#Computes the gradient of (sum_s) E^2 wrt entries of w_i_tao--
+	#(each dimension of w_i_tao is a muscle activity value)
+	#Inputs:
+	# M: S x D x T muscle activity 
+	# c: S x N synergy coefficents
+	# W : N x D x T synergies
+	# delay : S x N delays 
+
+	S,D,T = np.shape(M)
+	nabla = np.zeros(D)
+	_,N = np.shape(delays)
+	
+	for d_0 in range(D):
+		values_by_s_by_t = np.zeros((S,T)) 
+		for t in range(T):
+			for s in range(S):
+				# second_term,third_term = np.zeros(N),np.zeros(N)
+				second_term = np.array([c[s,j]*shift_matrix_columns(delays[s,j],W[j,:,:])[d_0,t] for j in range(N)])
+				third_term = np.array([c[s,j]*(tao==t-delays[s,j]) for j in range(N)])
+				entry = (2*M[s,d_0,t] - np.sum(second_term))*(-1)*np.sum(third_term)
+				values_by_s_by_t[s,t] = entry 
+		value = np.sum(values_by_s_by_t)
+		nabla[d_0] = value
+	return nabla
+
+		
 
 def compute_squared_error(W,c,t,M):
 	#Returns the sum squared error across episodes as defined at the top of section 3
