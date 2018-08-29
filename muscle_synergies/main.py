@@ -57,23 +57,22 @@ while error>error_threshold:
 	print(time.time()-last)
 	raw_input('here')
 	W = substeps.update_W(W)
-	error = substeps.compute_squared_error(W,c,t,M)
-	
+	error = substeps.compute_squared_error(W,c,delays,M)
+
 
 
 
 # class UpdaterObject(object):
 # 	def __init__(S,D,M,etc):
 # 		self.T = T
-# 		self.M = M 
+# 		self.M = M
 # 	def initialize_W(self,):
-# 		self.W = 
+# 		self.W =
 
-# 		self.c = 
+# 		self.c =
 # 	def update_c(self):
 
-# 		self.c = 
+# 		self.c =
 
 
 # updaterObject = UpdaterObject(args)
-
