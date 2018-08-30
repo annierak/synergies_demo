@@ -30,7 +30,7 @@ for i in range(N):
 #now shift the synergies, and check to make sure they're shifted by plotting
 #(this also tests the matrix_shift function)
 # shifts = np.floor(np.random.uniform(-100,100,N)).astype(int)
-shifts = np.zeros(N)
+shifts = np.zeros(N).astype(int)
 
 print('shifts: '+str(shifts))
 
@@ -64,16 +64,16 @@ for j in range(D):
     plt.subplot(D,1,j+1)
     plt.plot(M[:,j],color = 'purple')
 
-#Now, we input the M and ORIGINAL W 
+#Now, we input the M and ORIGINAL W
 #AS WELL AS randomly initialized cs and ts (ts small or zero)
 #into the coefficent update function to test
-#whether the initial cs are updated to get closer to the true cs 
+#whether the initial cs are updated to get closer to the true cs
 
 S = 1
 c = np.random.uniform(c_min,c_max,(S,N))
 print('initial c guess:'+str(c))
 # delays = np.floor(np.random.uniform(0,5,(S,N))).astype(int)
-delays = np.zeros((S,N))
+delays = np.zeros((S,N)).astype(int)
 M = M.T
 M = M[None,:,:]
 W = np.moveaxis(W,0,2)
@@ -84,7 +84,7 @@ print('updated c estimate: '+str(updated_c))
 
 #Check that the compute_squared_error is working using true cs:
 
-# print(substeps.compute_squared_error(W,true_c[None,:],delays,M))
+print(substeps.compute_squared_error(W,true_c[None,:],delays,M))
 
 error_initial = substeps.compute_squared_error(W,c,delays,M)
 error_updated = substeps.compute_squared_error(W,updated_c,delays,M)
@@ -92,6 +92,4 @@ error_updated = substeps.compute_squared_error(W,updated_c,delays,M)
 print('error of initial estimate: '+str(error_initial))
 print('error of updated estimate: '+str(error_updated))
 
-
-
-# plt.show()
+plt.show()

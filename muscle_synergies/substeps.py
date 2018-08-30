@@ -74,17 +74,20 @@ def update_c(c,M,W,delays):
 	for s in range(S):
 		delta_c = -mu_c*squared_error_gradient_episode(M[s,:,:],c[s,:],W,delays[s,:])
 		c_copy[s,:] += delta_c
-		# print('delta_c'+str(delta_c))
+		print('delta_c'+str(delta_c))
+	#Nonnegativity constraint
+	c_copy[c_copy<0] = 0.
 	return c_copy
 
 def update_W(c,M,W,delays):
 	N,D,T = np.shape(W)
-	mu_W = 1e-3
+	mu_W = 1e-2
 	W_copy = np.copy(W)
 	for i in range(N):
 		for tao in range(T):
 			delta_w_i_tao = -mu_W*squared_error_gradient_total(M,c,W,delays,i,tao)
 			W_copy[i,:,tao] += delta_w_i_tao
+	W_copy[W_copy<0] = 0
 	return W_copy
 
 
