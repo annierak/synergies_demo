@@ -30,13 +30,14 @@ c_max = 4
 
 W = amplitudes*W
 
-plt.figure()
+plt.ion()
+plt.figure(1)
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,0))
     plt.imshow(W[:,i,:].T,interpolation='none',aspect=T/D,cmap='Greys_r')
     pltuls.strip_ticks(ax)
 
-plt.text(0.3,0.95,'True W',transform=plt.gcf().transFigure)
+plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
 # plt.show()
 
@@ -78,39 +79,35 @@ error_threshold = 1e-6
 error = substeps.compute_squared_error(W_est,c_est,np.zeros_like(c_est),M)
 print('error before starting: '+str(error))
 
-plt.ion()
 ims = []
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,1))
     im = plt.imshow(W_est[i,:,:],interpolation='none',aspect=T/D,cmap='Greys_r')
-    print(type(im))
     ims.append(im)
     pltuls.strip_ticks(ax)
-plt.show()
+# plt.show()
 
+plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
 
 while error>error_threshold:
-	last = time.time()
-	t = substeps.update_delay(M,W_est,c_est,S) #size of delays (t) is S x N
-	error = substeps.compute_squared_error(W_est,c_est,t,M)
-	print('error after delay update: '+str(error))
-	c_est = substeps.update_c(c_est,M,W_est,t)
-	error = substeps.compute_squared_error(W_est,c_est,t,M)
-	print('error after c update: '+str(error))
-	W_est = substeps.update_W(c_est,M,W_est,t)
-	error = substeps.compute_squared_error(W_est,c_est,t,M)
-	print('error after W update; '+str(error))
-	for i in range(N):
-		im = ims[i]
-		# im.set_data(W_est[i,:,:])
-		test_im = np.random.randn(*np.shape(W_est[i,:,:]))
-		im.set_data(test_im)
-	plt.draw()
-	time.sleep(5)
-	# print(time.time()-last)
+    last = time.time()
+    t = substeps.update_delay(M,W_est,c_est,S) #size of delays (t) is S x N
+    error = substeps.compute_squared_error(W_est,c_est,t,M)
+    print('error after delay update: '+str(error))
+    c_est = substeps.update_c(c_est,M,W_est,t)
+    error = substeps.compute_squared_error(W_est,c_est,t,M)
+    print('error after c update: '+str(error))
+    W_est = substeps.update_W(c_est,M,W_est,t)
+    error = substeps.compute_squared_error(W_est,c_est,t,M)
+    print('error after W update; '+str(error))
+    for i in range(N):
+    	im = ims[i]
+    	im.set_data(W_est[i,:,:])
+    plt.draw()
+    time.sleep(1)
+    plt.pause(1)
 
 
-plt.text(0.7,0.95,'Estim. W',transform=plt.gcf().transFigure)
 
 
 
