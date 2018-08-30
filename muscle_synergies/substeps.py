@@ -74,7 +74,7 @@ def update_c(c,M,W,delays):
 	for s in range(S):
 		delta_c = -mu_c*squared_error_gradient_episode(M[s,:,:],c[s,:],W,delays[s,:])
 		c_copy[s,:] += delta_c
-		print('delta_c'+str(delta_c))
+		# print('delta_c'+str(delta_c))
 	#Nonnegativity constraint
 	c_copy[c_copy<0] = 0.
 	return c_copy
