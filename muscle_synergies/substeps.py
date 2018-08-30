@@ -4,11 +4,11 @@ import flylib as flb
 import time
 import itertools
 
-def initialize_W(N,D,T):
-	return np.random.uniform(0,1,size=(N,D,T))
+def initialize_W(N,D,T,scale=1):
+	return np.random.uniform(0,scale,size=(N,D,T))
 
-def initialize_c(S,N):
-	return np.random.uniform(0,1,size=(S,N))
+def initialize_c(S,N,scale=1):
+	return np.random.uniform(0,scale,size=(S,N))
 
 
 def compute_phi_s_i(M,W,t,i,s):

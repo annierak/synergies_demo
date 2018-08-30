@@ -55,9 +55,8 @@ while error>error_threshold:
 	delays = substeps.update_delay(M,W,c,S) #size of delays (t) is S x N
 	c = substeps.update_c(c,M,W,delays)
 	W = substeps.update_W(c,M,W,delays)
-	print(time.time()-last)
-	raw_input('here')
 	error = substeps.compute_squared_error(W,c,t,M)
+	print(time.time()-last)
 
 
 
