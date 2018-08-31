@@ -73,6 +73,7 @@ true_c = true_c[None,:]
 W_est = substeps.initialize_W(N,D,T) #size of W is N x D x T
 c_est = substeps.initialize_c(S,N) #size of c is S x N
 
+
 error = np.inf
 
 error_threshold = 1e-6
@@ -99,12 +100,13 @@ while error>error_threshold:
     print('error after c update: '+str(error))
     W_est = substeps.update_W(c_est,M,W_est,t)
     error = substeps.compute_squared_error(W_est,c_est,t,M)
-    print('error after W update; '+str(error))
+    print('error after W update: '+str(error))
+    print(t)
+    print(c_est)
     for i in range(N):
     	im = ims[i]
     	im.set_data(W_est[i,:,:])
     plt.draw()
-    time.sleep(1)
     plt.pause(1)
 
 

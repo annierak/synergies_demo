@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import flylib as flb
 import time
 import itertools
+import sys
 
 def initialize_W(N,D,T,scale=1):
 	return np.random.uniform(0,scale,size=(N,D,T))
@@ -17,8 +18,16 @@ def compute_phi_s_i(M,W,t,i,s):
 	summand = 0
 	#want to shift W by t according to convention specified in 3.1 (i)
 	W_t = shift_matrix_columns(t,W[i,:,:])
+	
 	for tao in range(T):
 		summand += np.dot(M[s,:,tao],W_t[:,tao]) #synergies W are indexed by i = 1,2,...,N muscles j = 1,2,...D column is the time
+	
+	if summand<0:
+		print(summand)
+		print(np.sum(M<0))
+		print(np.sum(W_t<0))
+		sys.exit()
+
 	return summand
 
 def shift_matrix_columns(column_shift,A,transpose=False):
@@ -43,18 +52,14 @@ def update_delay(M,W,c,S):
 	N,D,T = np.shape(W)
 	delays = np.zeros((S,N)) #size of delays (t) is S x N
 	for s in range(S):
+		M_copy = np.copy(M)	
 		synergy_list = list(range(N))
 		for synergy_step in range(N):
 			phi_s_is = np.zeros((len(synergy_list),2*T+1))
 			ts = range(-T,T+1)
 			for i,synergy in enumerate(synergy_list):
 				for delay_index,t in enumerate(ts):
-					phi_s_is[i,delay_index] = compute_phi_s_i(M,W,t,synergy,s)
-			# na = np.newaxis
-			# ts = np.array(range(-T,T+1));ts = ts[na,:]
-			# synergies = np.array(synergy_list)[na,:,na]
-			# print(np.shape(W),np.shape(ts),np.shape(synergies))
-			# phi_s_is = compute_phi_s_i(M,W,ts,synergies,s)
+					phi_s_is[i,delay_index] = compute_phi_s_i(M_copy,W,t,synergy,s)
 
 			max_synergy_index,max_delay_index = np.unravel_index(np.argmax(phi_s_is),np.shape(phi_s_is))
 			max_synergy = synergy_list[max_synergy_index]
@@ -62,7 +67,9 @@ def update_delay(M,W,c,S):
 			# max_delay = range(-T,T+1)[max_delay_index]
 			shifted_max_synergy = shift_matrix_columns(max_delay,W[max_synergy,:,:])
 			scaled_shifted_max_synergy = c[s,max_synergy]*shifted_max_synergy
-			M[s,:,:] -= scaled_shifted_max_synergy
+			M_copy[s,:,:] -= scaled_shifted_max_synergy
+			#This is the piece where we assume we make M nonnegative
+			M_copy[M_copy<0] =0.
 			synergy_list.remove(max_synergy)
 			delays[s,max_synergy] = max_delay
 	return delays.astype(int)
@@ -81,7 +88,7 @@ def update_c(c,M,W,delays):
 
 def update_W(c,M,W,delays):
 	N,D,T = np.shape(W)
-	mu_W = 1e-2
+	mu_W = 1e-4
 	W_copy = np.copy(W)
 	for i in range(N):
 		for tao in range(T):
@@ -100,7 +107,7 @@ def squared_error_gradient_episode(M_s,c_s,W,delays_s):
 	# W : N x D x T synergies
 	# delay_s : N delays
 	D,T = np.shape(M_s)
-	nabla = np.zeros_like(c_s)
+	nabla_c = np.zeros_like(c_s)
 	N = len(c_s)
 	for j in range(N):
 		nabla_j_ts = np.zeros(T)
@@ -108,8 +115,8 @@ def squared_error_gradient_episode(M_s,c_s,W,delays_s):
 			entries_by_d = 2*(M_s[:,t]-np.sum(W[:,:,t]*c_s[:,None],axis=0))*(
 				-1*(shift_matrix_columns(delays_s[j],W[j,:,:])[:,t]))
 			nabla_j_ts[t] = np.sum(entries_by_d)
-		nabla[j] = np.sum(nabla_j_ts)
-	return nabla
+		nabla_c[j] = np.sum(nabla_j_ts)
+	return nabla_c
 
 def squared_error_gradient_total(M,c,W,delays,i,tao):
 
@@ -122,7 +129,7 @@ def squared_error_gradient_total(M,c,W,delays,i,tao):
 	# delay : S x N delays
 
 	S,D,T = np.shape(M)
-	nabla = np.zeros(D)
+	nabla_W= np.zeros(D)
 	_,N = np.shape(delays)
 
 	#The two sections immediately below should be made more efficient with object implementation
@@ -147,8 +154,9 @@ def squared_error_gradient_total(M,c,W,delays,i,tao):
 	for d_0 in range(D):
 		values_by_s_by_t = (2*M[:,d_0,:] - summed_scaled_shifted_W[:,d_0,:])*(-1)*summed_scaled_tao_i_indicator
 		value = np.sum(values_by_s_by_t)
-		nabla[d_0] = value
-	return nabla
+		nabla_W[d_0] = value
+	# print(nabla_W)
+	return nabla_W
 
 
 
