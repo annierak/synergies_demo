@@ -2,6 +2,7 @@ import substeps
 import util
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 # ==========
 # This piece is for testing step 2 of the algorithm (delay selection)
@@ -45,7 +46,6 @@ c_min = 0
 c_max = 4
 
 true_c = np.random.uniform(c_min,c_max,N)
-print('true c: '+str(true_c))
 
 scaled_shifted_W = shifted_W*true_c[None,:,None]
 
@@ -78,18 +78,26 @@ M = M.T
 M = M[None,:,:]
 W = np.moveaxis(W,0,2)
 
-updated_c = substeps.update_c(c,M,W,delays)
-print('updated c estimate: '+str(updated_c))
-
-
-#Check that the compute_squared_error is working using true cs:
-
-print(substeps.compute_squared_error(W,true_c[None,:],delays,M))
-
+error_updated = np.inf
 error_initial = substeps.compute_squared_error(W,c,delays,M)
-error_updated = substeps.compute_squared_error(W,updated_c,delays,M)
-
 print('error of initial estimate: '+str(error_initial))
-print('error of updated estimate: '+str(error_updated))
 
-plt.show()
+while abs(error_updated)>0.05:
+    print('true c: '+str(true_c))
+    try:
+        updated_c = substeps.update_c(updated_c,M,W,delays)
+    except(NameError):
+        updated_c = substeps.update_c(c,M,W,delays)
+    print('c_est: '+str(updated_c))
+
+
+    #Check that the compute_squared_error is working using true cs:
+
+    # print(substeps.compute_squared_error(W,true_c[None,:],delays,M))
+
+    error_updated = substeps.compute_squared_error(W,updated_c,delays,M)
+
+    print('error of updated estimate: '+str(error_updated))
+    time.sleep(.1)
+
+# plt.show()

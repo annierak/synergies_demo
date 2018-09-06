@@ -64,10 +64,24 @@ pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
 
 
 #Now make M by adding each of these scaled shifted N synergies muscle-wise
-M = np.sum(pre_sum_M,axis=1)
-
+M = np.squeeze(np.sum(pre_sum_M,axis=1)) #M is S x D x T
 W_est = substeps.initialize_W(N,D,T) #size of W is N x D x T
+W_est = np.concatenate(W_est,axis=1) #Now, reshape it so that it's D x (NxT)
 c_est = substeps.initialize_c(S,N) #size of c is S x N
+Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
+
+for i in range(N):
+    for t in range(2*T-1):
+        rows,columns = np.indices((N*T,T))
+        Theta[i,t,:,:] = (rows==(i-1)*T)*(columns==t)
+
+
+H = np.zeros((s,N*T,T))
+for s in range(S):
+    to_send = c_est[s,:]*Theta[i,]
+    H[s,:,:] =
+
+
 
 plt.figure(200)
 for d in range(D):
