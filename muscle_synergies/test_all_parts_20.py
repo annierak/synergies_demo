@@ -11,7 +11,7 @@ import time
 
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
-S = 10
+S = 5
 T = 30  #synergy duration in time steps
 N = 3 #number of synergies
 
@@ -76,7 +76,6 @@ M_est = np.sum(W_est[None,:,:,:]*c_est[:,:,None,None],axis=1)
 for d in range(D):
     plt.subplot(D,1,d+1)
     plt.ylim([0,1])
-    print(len(M_est[display_episode,d,:]))
     line, = plt.plot(M_est[display_episode,d,:])
     lines.append(line)
 
@@ -92,12 +91,10 @@ plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
 Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
 
-for i in range(N):
-    for t in range(2*T-1):
+for i in range(1,N+1):
+    for t in range(1,2*T):
         rows,columns = np.indices((N*T,T))
-        Theta[i,t,:,:] = (rows==(i-1)*T)*(columns==t)
-
-
+        Theta[i-1,t-1,:,:] = (rows+1-(i-1)*T)==(columns+1-t)
 
 error = np.inf
 
@@ -120,25 +117,28 @@ for i in range(N):
 
 plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
 
+stacked_M = np.copy(M)
+M = util.spread(M)  #reshape it so that it's D x T*S
+W_est = util.spread(W_est)
+
 
 counter = 1
 while error>error_threshold:
     last = time.time()
     #Delay update
-    delays = substeps.update_delay(M,W_est,c_est,S) #size of delays (t) is S x N
-    error = substeps.compute_squared_error(W_est,c_est,t,M)
-    print('error after delay update: '+str(error))
+    delays = substeps.update_delay(stacked_M,util.stack(W_est,T),c_est,S) #size of delays (t) is S x N
 
-    #prepare for multiplicative updates
-    W_est = util.spread(W_est) #reshape it so that it's D x (NxT)
-    M = util.spread(M)  #reshape it so that it's D x T*S
+    Theta_i_tis = Theta[0,util.t_shift_to_index(delays[0,0],T),:,:]
+
+    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,t,stacked_M)
+    print('error after delay update: '+str(error))
 
     #update H with current delays
     H = util.construct_H(c_est,Theta,delays)
 
     #c update
     c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays)
-    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,M)
+    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
 
 
     print('c_est: ' + str(c_est[display_episode]))
@@ -151,20 +151,20 @@ while error>error_threshold:
 
     #W update
     W_est = substeps.multiplicative_update_W(M,W_est,H)
-    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,M)
+    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
     print('error after W update: '+str(error))
     print('delays: '+str(t))
 
     #Display current W_est estimates
     for i in range(N):
     	im = ims[i]
-    	im.set_data(util.stack(W_est)[i,:,:])
+    	im.set_data(util.stack(W_est,T)[i,:,:])
         im.set_clim(vmin=0,vmax=amp_max)
 
     plt.figure(200)
 
     #Display new M_est for display episode
-    M_est_ep = W_est*H[display_episode,:,:]
+    M_est_ep = W_est.dot(util.stack(H,T)[display_episode,:,:])
     for d in range(D):
         plt.subplot(D,1,d+1)
         line = lines[d]

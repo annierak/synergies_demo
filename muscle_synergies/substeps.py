@@ -210,7 +210,7 @@ def compute_squared_error(W,c,t,M):
 
 
 def multiplicative_update_W(M,W_est,H):
-	mult_factor = np.dot(M,H.T)/(W.dot(H).dot(H.T))
+	mult_factor = np.dot(M,H.T)/(W_est.dot(H).dot(H.T))
 	W_est = W_est*mult_factor
 	return W_est
 
@@ -222,12 +222,12 @@ def multiplicative_update_c(c_est,M,W_est,Theta,H,delays):
 	mult_factor = np.zeros_like(c_est)
 	for s in range(S):
 		for i in range(N):
-			Theta_i_tis = Theta[i,util.t_shift_to_index(delays[s,:],T),:,:]
-			print(np.shape(Theta_i_tis))
+			print(delays[s,i])
+			Theta_i_tis = Theta[i,util.t_shift_to_index(delays[s,i],T),:,:]
+			print(np.sum(Theta_i_tis))
+			raw_input(' ')
 			num = np.trace((M[s,:,:].T).dot(W_est).dot(Theta_i_tis))
-			print(np.shape((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis)))
 			denom = np.trace((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis))
-			print(denom)
 			mult_factor[s,i] = num/denom
 	c_est = c_est*mult_factor
 	return c_est
