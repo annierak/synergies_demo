@@ -8,6 +8,40 @@ def create_ranges(start, stop, N):
     return steps[None,:]*np.arange(N)[:,None] + start[None,:]
 
 
+def spread(A):
+    #Turns stacked matrix into adjacent matrix spread for multiplicative update
+    #reshape from d x e x T to  e x (dxT)
+    return np.concatenate(A,axis=1)
+
+
+def stack(A,T):
+    #Inverse of above--turns shape of A from e x d*T to d x e x T
+    e,dT = np.shape(A)
+    return np.reshape(A,(-1,e,T))
+
+
+def t_index_to_shift(index,T):
+	#for a given time duration T, switch the index of range(1-T,T) to the shift value
+	return (1-T)+index
+def t_shift_to_index(shift,T):
+	#do the reverse of the above
+	return shift +(T-1)
+
+def construct_H(c_est,Theta,delays):
+    S,N = np.shape(delays)
+    _,_,_,T = np.shape(Theta)
+    H = np.zeros((S,N*T,T))
+    for s in range(S):
+        # print(np.shape(c_est[s,:][:,None,None]))
+        # print(np.shape(np.array([Theta[i,t_shift_to_index(delays[s,i],T),:,:] for i in range(N)])))
+
+        H[s,:,:] = np.sum(c_est[s,:][:,None,None]*\
+            np.array([Theta[i,t_shift_to_index(
+            delays[s,i],T),:,:] for i in range(N)]),axis=0)
+    #last bit is to turn H from S x N*T x T to N*T x T*S
+    return np.concatenate(H,axis=1)
+
+
 def gauss_vector(max_x,mu,sigma):
     #Returns a vector of shape (max_x, shape(mu)=shape(sigma)) whose values are a Gaussian
     #function centered on mu, std sigma
