@@ -11,13 +11,15 @@ def create_ranges(start, stop, N):
 def spread(A):
     #Turns stacked matrix into adjacent matrix spread for multiplicative update
     #reshape from d x e x T to  e x (dxT)
-    return np.concatenate(A,axis=1)
+    B = np.copy(A)
+    return np.concatenate(B,axis=1)
 
 
 def stack(A,T):
     #Inverse of above--turns shape of A from e x d*T to d x e x T
     e,dT = np.shape(A)
-    return np.reshape(A,(-1,e,T))
+    B = np.copy(A)
+    return np.reshape(B,(-1,e,T))
 
 
 def t_index_to_shift(index,T):
