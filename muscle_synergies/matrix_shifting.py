@@ -20,7 +20,6 @@ c_max = 1
 W = amplitudes*W
 W = np.squeeze(np.moveaxis(W,0,2))
 
-
 shifts = np.array([-1,2,4])
 shift_indices = shifts + (T-1)
 
@@ -47,6 +46,6 @@ for shift,index in list(zip(shifts,shift_indices)):
 
     counter +=1
 
-# plt.show()
+plt.show()
 
 big_shift_matrix = np.vstack(shift_matrices)

@@ -11,14 +11,14 @@ import time
 
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
-S = 5
-T = 30  #synergy duration in time steps
+S = 20
+T = 15    #synergy duration in time steps
 N = 3 #number of synergies
 
 #We want to construct an M that is made of shifted Gaussians added together
 
 # construct the synergies as Gaussians
-variances = np.random.uniform(0.5*T/20,T/20,(N,D))
+variances = np.random.uniform(0.5*T/5,T/5,(N,D))
 means = np.random.uniform(1,T,(N,D))
 W = util.gauss_vector(T,means,variances)
 
@@ -91,10 +91,20 @@ plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
 Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
 
+
 for i in range(1,N+1):
-    for t in range(1,2*T):
+    for t in range(1-T,T):
         rows,columns = np.indices((N*T,T))
-        Theta[i-1,t-1,:,:] = (rows+1-(i-1)*T)==(columns+1-t)
+        to_fill = (rows+1-(i-1)*T)==(columns+1-t)
+        to_fill[0:(i-1)*T,:] = 0.
+        to_fill[i*T:,:] = 0.
+        Theta[i-1,util.t_shift_to_index(t,T),:,:] = to_fill
+        # plt.figure(544)
+        # plt.imshow(Theta[i-1,util.t_shift_to_index(t,T),:,:],interpolation='none')
+        # raw_input(' ')
+
+
+# util.test_Theta(Theta)
 
 error = np.inf
 
@@ -148,6 +158,7 @@ while error>error_threshold:
     #Update H with new c's
     H = util.construct_H(c_est,Theta,delays)
     #shape of H is N*T x S*T
+
 
     #W update
     W_est = substeps.multiplicative_update_W(M,W_est,H)

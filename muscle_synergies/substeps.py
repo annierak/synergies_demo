@@ -206,28 +206,76 @@ def compute_squared_error(W,c,t,M):
 		for t in range(T):
 			entries_by_d = M[s,:,t]-np.sum(W[:,:,t]*c[s,:][:,None],axis=0)
 			error[s,t] = np.sum(np.square(entries_by_d))
+			# if np.isnan(error[s,t]):
+			# 	print('nan!',s,t)
+			# 	print(np.sum(np.isnan(W[:,:,t])))
+			# 	sys.exit()
 	return np.sum(error)
 
 
 def multiplicative_update_W(M,W_est,H):
+	# if (np.sum(W_est.dot(H).dot(H.T)==0))>0:
+	# plt.figure(333)
+	# plt.subplot(3,2,1)
+	# plt.imshow(W_est.dot(H).dot(H.T),interpolation='none')
+	# plt.subplot(3,2,2)
+	# plt.imshow(W_est.dot(H).dot(H.T)==0,interpolation='none')
+	# plt.subplot(3,2,3)
+	# plt.imshow(H.dot(H.T),interpolation='none')
+	# plt.subplot(3,2,4)
+	# plt.imshow(H.dot(H.T)[:,np.sum(H.dot(H.T),axis=1)==0],interpolation='none')
+	plt.figure(444)
+	plt.subplot(2,1,1)
+	plt.imshow(H,interpolation='none')
+	H_demo = np.zeros_like(H);H_demo[np.sum(H,axis=1)==0,:]=1
+	plt.subplot(2,1,2)
+	plt.imshow(H_demo,interpolation='none')
+	plt.show()
+	zeros = (W_est.dot(H).dot(H.T)==0)
+	nonzero_indices = np.logical_not(zeros)
+	print(np.sum(np.dot(M,H.T)[zeros]))
 	mult_factor = np.dot(M,H.T)/(W_est.dot(H).dot(H.T))
-	W_est = W_est*mult_factor
+	# raw_input(' ')
+	# print(mult_factor)
+	# raw_input(' ')
+	print(np.sum(np.isnan(W_est)))
+	W_est[nonzero_indices] = W_est[nonzero_indices]*mult_factor[nonzero_indices]
+	print(np.sum(np.isnan(W_est)))
 	return W_est
 
 def multiplicative_update_c(c_est,M,W_est,Theta,H,delays):
 	_,_,_,T = np.shape(Theta)
 	S,N = np.shape(c_est)
 	M = util.stack(M,T)
+	# plt.figure(9)
+	# plt.imshow(H)
+	# print(np.shape(H),(N*T,T*S))
 	H = util.stack(H,T)
+	# print(np.shape(H),(S,N*T,T))
+	# plt.figure(10)
+	# plt.imshow(H[0,:,:])
+	# plt.show()
 	mult_factor = np.zeros_like(c_est)
 	for s in range(S):
 		for i in range(N):
-			print(delays[s,i])
+			# print(delays[s,i])
 			Theta_i_tis = Theta[i,util.t_shift_to_index(delays[s,i],T),:,:]
-			print(np.sum(Theta_i_tis))
-			raw_input(' ')
+			# print(np.sum(Theta_i_tis))
+			# raw_input(' ')
 			num = np.trace((M[s,:,:].T).dot(W_est).dot(Theta_i_tis))
 			denom = np.trace((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis))
+			if denom==0:
+				print(s,i)
+				print('inf denom c update')
+				plt.figure(55)
+				plt.subplot(2,1,1)
+				plt.imshow((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis),
+				interpolation='none')
+				plt.subplot(2,1,2)
+				plt.imshow((H[s,:,:]),interpolation='none')
+				plt.show()
+				raw_input(' ')
 			mult_factor[s,i] = num/denom
+	# print(mult_factor)
 	c_est = c_est*mult_factor
 	return c_est
