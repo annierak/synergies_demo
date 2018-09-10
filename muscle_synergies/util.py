@@ -8,6 +8,8 @@ def create_ranges(start, stop, N):
     steps = (1.0/divisor) * (stop - start)
     return steps[None,:]*np.arange(N)[:,None] + start[None,:]
 
+def normalize(A):
+    return A/np.max(A)
 
 def spread(A):
     #Turns stacked matrix into adjacent matrix spread for multiplicative update

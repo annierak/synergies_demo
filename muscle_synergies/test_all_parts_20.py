@@ -1,9 +1,16 @@
 import substeps
 import util
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.animation as animate
 import matplotlib.pyplot as plt
 import plotting_utls as pltuls
 import time
+import sys
+
+
+
 
 # ==========
 # This piece is for testing the entire updating process (shifts, coefficients, Ws)
@@ -32,7 +39,16 @@ c_max = 1
 W = amplitudes*W
 
 plt.ion()
-plt.figure(1)
+fig = plt.figure(1)
+
+#----This bit is for video making---------
+if len(sys.argv)>1:
+    video_name = sys.argv[1]
+    FFMpegWriter = animate.writers['ffmpeg']
+    metadata = {'title':video_name,}
+    writer = FFMpegWriter(fps=10, metadata=metadata)
+    writer.setup(fig, video_name+'.mp4', 500)
+#------------------------------------------
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,0))
     plt.imshow(W[:,i,:].T,interpolation='none',
@@ -52,7 +68,7 @@ plt.figure(1)
 for i in range(N):
     ax = plt.gcf().get_axes()[i]
     ax.text(0.5,0.5,str(
-        true_c[display_episode,i])[:3],color='purple',
+        true_c[display_episode,i])[:5],color='purple',
         horizontalalignment='center',transform=ax.transAxes,
         fontsize=25)
 W = np.moveaxis(W,0,2)
@@ -114,15 +130,32 @@ print('error before starting: '+str(error))
 
 
 ims = []
+W_est_axes = []
 plt.figure(1)
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,1))
+    W_est_axes.append(ax)
     im = plt.imshow(
         W_est[i,:,:],interpolation='none',
         aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
     plt.colorbar()
     ims.append(im)
     pltuls.strip_ticks(ax)
+
+#Display scaled estimated c
+c_texts = []
+for i in range(N):
+    max_W_est = np.max(W_est[i,:,:])
+    max_W = np.max(W[i,:,:])
+    c_est_scaled = true_c[display_episode,i]*max_W/max_W_est
+    ax = W_est_axes[i]
+    c_text = ax.text(0.5,0.5,str(
+        c_est_scaled)[:3],color='purple',
+        horizontalalignment='center',transform=ax.transAxes,
+        fontsize=25)
+    c_texts.append(c_text)
+
+
 # plt.show()
 
 plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
@@ -147,7 +180,7 @@ while error>error_threshold:
     H = util.construct_H(c_est,Theta,delays)
 
     #c update
-    c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays)
+    c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
     error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
 
 
@@ -161,18 +194,64 @@ while error>error_threshold:
 
 
     #W update
-    W_est = substeps.multiplicative_update_W(M,W_est,H)
+    W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
     error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
     print('error after W update: '+str(error))
     print('delays: '+str(t))
 
     #Display current W_est estimates
+    W_est = util.stack(W_est,T)
+
+    if counter%5==1:
+        #First, figure out what order the W_ests match up to the true Ws
+        true_synergies = range(N)
+        est_synergies = range(N)
+        true_syn_partners = np.zeros(N)
+        matching_scores = np.array(
+        [[np.sum(np.abs(
+            util.normalize(W[true_synergy,:,:])-
+                util.normalize(W_est[est_synergy,:,:])))
+             for est_synergy in est_synergies]
+             for true_synergy in true_synergies])
+        true_partners,est_partners = np.unravel_index(
+            np.argsort(matching_scores,axis=None),np.shape(matching_scores))
+
+
+        partners = np.array([true_partners,est_partners])
+        print(partners)
+
+        for i in range(N):
+            true_syn_partners[partners[0,0]] = partners[1,0]
+            cols_to_keep = (partners[1,:]!=partners[1,0]) & (partners[0,:]!=partners[0,0])
+            partners = partners[:,cols_to_keep]
+
+        true_syn_partners = true_syn_partners.astype('int')
+        # raw_input(' ')
+
+    print('TRUE SYN PARTNERS: '+str(true_syn_partners))
+    #Then, display them
     for i in range(N):
     	im = ims[i]
-    	im.set_data(util.stack(W_est,T)[i,:,:])
+        max_value = np.max(W_est[true_syn_partners[i],:,:])
+    	im.set_data(util.normalize(W_est[true_syn_partners[i],:,:]))
         im.set_clim(vmin=0,vmax=amp_max)
 
+    # Display the c_est, scaled to match the true_c magnitude
+    plt.figure(1)
+    for i in range(N):
+        max_W_est = np.max(W_est[i,:,:])
+        max_W = np.max(W[i,:,:])
+        c_est_scaled = c_est[display_episode,i]*max_W_est/max_W
+        c_text = c_texts[true_syn_partners[i]]
+        c_text.set_text(str(c_est_scaled)[:5])
+
+    if len(sys.argv)>1:
+        writer.grab_frame()
+
+
     plt.figure(200)
+
+    W_est = util.spread(W_est)
 
     #Display new M_est for display episode
     M_est_ep = W_est.dot(util.stack(H,T)[display_episode,:,:])
