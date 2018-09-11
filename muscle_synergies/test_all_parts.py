@@ -11,8 +11,8 @@ import time
 
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
-S = 10
-T = 30  #synergy duration in time steps
+S = 1
+T = 15  #synergy duration in time steps
 N = 3 #number of synergies
 
 #We want to construct an M that is made of shifted Gaussians added together
