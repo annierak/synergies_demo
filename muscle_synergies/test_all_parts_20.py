@@ -200,6 +200,7 @@ while abs(1.-R2)>unexp_var_threshold:
     H = util.construct_H(c_est,Theta,delays)
 
     #c update
+    #===========================
     c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
@@ -212,11 +213,13 @@ while abs(1.-R2)>unexp_var_threshold:
     print('R2 after c update: '+str(R2))
 
     #Update H with new c's
+    #===========================
     H = util.construct_H(c_est,Theta,delays)
     #shape of H is N*T x S*T
 
 
     #W update
+    #===========================
     W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
