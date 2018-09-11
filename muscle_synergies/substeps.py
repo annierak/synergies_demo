@@ -89,6 +89,8 @@ def update_delay(M,W,c,S):
 
 def update_c(c_copy,M,W,delays):
 	S,N = np.shape(c)
+	# mu_c = 1e-3
+	c_copy = np.copy(c)
 	mu_c = 1e-1
 	# c_copy = np.copy(c)
 	for s in range(S):
@@ -107,7 +109,7 @@ def update_c(c_copy,M,W,delays):
 
 def update_W(c,M,W_copy,delays):
 	N,D,T = np.shape(W)
-	mu_W = 1e-2
+	mu_W = 1e-1
 	W_copy = np.copy(W)
 	delta_W = np.zeros_like(W_copy)
 	for i in range(N):
