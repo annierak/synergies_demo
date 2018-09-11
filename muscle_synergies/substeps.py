@@ -87,10 +87,12 @@ def update_delay(M,W,c,S):
 			delays[s,max_synergy] = max_delay
 	return delays.astype(int)
 
-def update_c(c,M,W,delays):
+def update_c(c_copy,M,W,delays):
 	S,N = np.shape(c)
-	mu_c = 1e-3
+	# mu_c = 1e-3
 	c_copy = np.copy(c)
+	mu_c = 1e-1
+	# c_copy = np.copy(c)
 	for s in range(S):
 		delta_c = -mu_c*squared_error_gradient_episode(M[s,:,:],c[s,:],W,delays[s,:])
 		#Try a rule where entries are only updated if they are not sent to 0
@@ -105,7 +107,7 @@ def update_c(c,M,W,delays):
 	c_copy[c_copy<0] = 0.
 	return c_copy
 
-def update_W(c,M,W,delays):
+def update_W(c,M,W_copy,delays):
 	N,D,T = np.shape(W)
 	mu_W = 1e-1
 	W_copy = np.copy(W)
@@ -115,20 +117,26 @@ def update_W(c,M,W,delays):
 			delta_W[i,:,tao] = -mu_W*squared_error_gradient_total(M,c,W,delays,i,tao)
 			# delta_w_i_tao = -mu_W*squared_error_gradient_total(M,c,W,delays,i,tao)
 			# W_copy[i,:,tao] += delta_w_i_tao
-	plt.figure(100)
-	vmin=np.min(delta_W);vmax=np.max(delta_W)
-	mdpt= 1 - vmax / (vmax + abs(vmin))
-	# cmap = pltuls.shiftedColorMap(matplotlib.cm.RdYlBu_r, start=0, midpoint=mdpt, stop=1.0, name='shiftedcmap')
-	cmap = matplotlib.cm.RdYlBu
-	for i in range(N):
-		plt.subplot(N,1,i+1)
-		try:
-			im = plt.gca().get_images()[0]
-			im.set_data(delta_W[i,:,:])
-			im.set_clim(vmin=vmin,vmax=vmax)
-		except(IndexError):
-			plt.imshow(delta_W[i,:,:],interpolation='none',cmap=cmap,vmin=vmin,vmax=vmax,aspect=0.2*T/D)
-			plt.colorbar()
+
+	#--------This piece is for visualizing what delta W looks like--------------
+
+	# plt.figure(100)
+	# vmin=np.min(delta_W);vmax=np.max(delta_W)
+	# mdpt= 1 - vmax / (vmax + abs(vmin))
+	# # cmap = pltuls.shiftedColorMap(matplotlib.cm.RdYlBu_r, start=0, midpoint=mdpt, stop=1.0, name='shiftedcmap')
+	# cmap = matplotlib.cm.RdYlBu
+	# for i in range(N):
+	# 	plt.subplot(N,1,i+1)
+	# 	try:
+	# 		im = plt.gca().get_images()[0]
+	# 		im.set_data(delta_W[i,:,:])
+	# 		im.set_clim(vmin=vmin,vmax=vmax)
+	# 	except(IndexError):
+	# 		plt.imshow(delta_W[i,:,:],interpolation='none',cmap=cmap,vmin=vmin,vmax=vmax,aspect=0.2*T/D)
+	# 		plt.colorbar()
+
+	#------------------
+
 	# raw_input(' ')
 	# plt.pause(.3)
 	#Try a rule where entries are only updated if they are not sent to 0
@@ -206,28 +214,80 @@ def compute_squared_error(W,c,t,M):
 		for t in range(T):
 			entries_by_d = M[s,:,t]-np.sum(W[:,:,t]*c[s,:][:,None],axis=0)
 			error[s,t] = np.sum(np.square(entries_by_d))
+			# if np.isnan(error[s,t]):
+			# 	print('nan!',s,t)
+			# 	print(np.sum(np.isnan(W[:,:,t])))
+			# 	sys.exit()
 	return np.sum(error)
 
 
-def multiplicative_update_W(M,W_est,H):
-	mult_factor = np.dot(M,H.T)/(W_est.dot(H).dot(H.T))
-	W_est = W_est*mult_factor
+def multiplicative_update_W(M,W_est,H,scale=1):
+	# if (np.sum(W_est.dot(H).dot(H.T)==0))>0:
+	# plt.figure(333)
+	# plt.subplot(3,2,1)
+	# plt.imshow(W_est.dot(H).dot(H.T),interpolation='none')
+	# plt.subplot(3,2,2)
+	# plt.imshow(W_est.dot(H).dot(H.T)==0,interpolation='none')
+	# plt.subplot(3,2,3)
+	# plt.imshow(H.dot(H.T),interpolation='none')
+	# plt.subplot(3,2,4)
+	# plt.imshow(H.dot(H.T)[:,np.sum(H.dot(H.T),axis=1)==0],interpolation='none')
+
+	#----This piece displays H and its zero rows-------------
+	# plt.figure(444)
+	# plt.subplot(2,1,1)
+	# plt.imshow(H,interpolation='none')
+	# H_demo = np.zeros_like(H);H_demo[np.sum(H,axis=1)==0,:]=1
+	# plt.subplot(2,1,2)
+	# plt.imshow(H_demo,interpolation='none')
+	# plt.show()
+	# ----------------------
+
+	zeros = (W_est.dot(H).dot(H.T)==0)
+	nonzero_indices = np.logical_not(zeros)
+	print(np.sum(np.dot(M,H.T)[zeros]))
+	mult_factor = scale*np.dot(M,H.T)/(W_est.dot(H).dot(H.T))
+	# raw_input(' ')
+	# print(mult_factor)
+	# raw_input(' ')
+	print(np.sum(np.isnan(W_est)))
+	W_est[nonzero_indices] = W_est[nonzero_indices]*mult_factor[nonzero_indices]
+	print(np.sum(np.isnan(W_est)))
 	return W_est
 
-def multiplicative_update_c(c_est,M,W_est,Theta,H,delays):
+def multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1):
 	_,_,_,T = np.shape(Theta)
 	S,N = np.shape(c_est)
 	M = util.stack(M,T)
+	# plt.figure(9)
+	# plt.imshow(H)
+	# print(np.shape(H),(N*T,T*S))
 	H = util.stack(H,T)
+	# print(np.shape(H),(S,N*T,T))
+	# plt.figure(10)
+	# plt.imshow(H[0,:,:])
+	# plt.show()
 	mult_factor = np.zeros_like(c_est)
 	for s in range(S):
 		for i in range(N):
-			print(delays[s,i])
+			# print(delays[s,i])
 			Theta_i_tis = Theta[i,util.t_shift_to_index(delays[s,i],T),:,:]
-			print(np.sum(Theta_i_tis))
-			raw_input(' ')
+			# print(np.sum(Theta_i_tis))
+			# raw_input(' ')
 			num = np.trace((M[s,:,:].T).dot(W_est).dot(Theta_i_tis))
 			denom = np.trace((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis))
+			if denom==0:
+				print(s,i)
+				print('inf denom c update')
+				plt.figure(55)
+				plt.subplot(2,1,1)
+				plt.imshow((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis),
+				interpolation='none')
+				plt.subplot(2,1,2)
+				plt.imshow((H[s,:,:]),interpolation='none')
+				plt.show()
+				raw_input(' ')
 			mult_factor[s,i] = num/denom
-	c_est = c_est*mult_factor
+	# print(mult_factor)
+	c_est = c_est*scale*mult_factor
 	return c_est
