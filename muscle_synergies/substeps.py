@@ -274,18 +274,34 @@ def multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1):
 			# raw_input(' ')
 			num = np.trace((M[s,:,:].T).dot(W_est).dot(Theta_i_tis))
 			denom = np.trace((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis))
-			if denom==0:
-				print(s,i)
-				print('inf denom c update')
-				plt.figure(55)
-				plt.subplot(2,1,1)
-				plt.imshow((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis),
-				interpolation='none')
-				plt.subplot(2,1,2)
-				plt.imshow((H[s,:,:]),interpolation='none')
-				plt.show()
-				raw_input(' ')
+			# if denom==0:
+			# 	print(s,i)
+			# 	print('inf denom c update')
+			# 	plt.figure(55)
+			# 	plt.subplot(2,1,1)
+			# 	plt.imshow((H[s,:,:].T).dot(W_est.T).dot(W_est).dot(Theta_i_tis),
+			# 	interpolation='none')
+			# 	plt.subplot(2,1,2)
+			# 	plt.imshow((H[s,:,:]),interpolation='none')
+			# 	plt.show()
+			# 	raw_input(' ')
 			mult_factor[s,i] = num/denom
 	# print(mult_factor)
 	c_est = c_est*scale*mult_factor
 	return c_est
+
+
+def compute_error_by_trace(M,W,C):
+	diff = M-W.dot(C)
+	return np.trace(np.dot(diff.T,diff))
+
+def mult_update_c_synchronous(M,W_est,C_est):
+	num = np.dot(W_est.T,M)
+	denom = (W_est.T).dot(W_est).dot(C_est)
+	C_est = C_est*(num/denom)
+	return C_est
+
+def mult_update_W_synchronous(M,W_est,C_est):
+	mult_factor = np.dot(M,C_est.T)/(W_est.dot(C_est).dot(C_est.T))
+	W_est = W_est*mult_factor
+	return W_est
