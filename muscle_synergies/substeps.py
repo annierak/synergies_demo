@@ -201,10 +201,13 @@ def squared_error_gradient_total(M,c,W,delays,i,tao):
 	# print(nabla_W)
 	return nabla_W
 
-
+def compute_total_sum_squares(M):
+	#Returns the total sum of squares (used for R^2 computation) of M
+	return np.sum(np.square(M-np.mean(M)))
 
 def compute_squared_error(W,c,t,M):
 	#Returns the sum squared error across episodes as defined at the top of section 3
+	#Aka residual sum of squares
 	S,N = np.shape(c)
 	S,D,T = np.shape(M)
 	error = np.zeros((S,T))
@@ -212,12 +215,7 @@ def compute_squared_error(W,c,t,M):
 		for t in range(T):
 			entries_by_d = M[s,:,t]-np.sum(W[:,:,t]*c[s,:][:,None],axis=0)
 			error[s,t] = np.sum(np.square(entries_by_d))
-			# if np.isnan(error[s,t]):
-			# 	print('nan!',s,t)
-			# 	print(np.sum(np.isnan(W[:,:,t])))
-			# 	sys.exit()
 	return np.sum(error)
-
 
 def multiplicative_update_W(M,W_est,H,scale=1):
 	# if (np.sum(W_est.dot(H).dot(H.T)==0))>0:
@@ -243,14 +241,14 @@ def multiplicative_update_W(M,W_est,H,scale=1):
 
 	zeros = (W_est.dot(H).dot(H.T)==0)
 	nonzero_indices = np.logical_not(zeros)
-	print(np.sum(np.dot(M,H.T)[zeros]))
+	# print(np.sum(np.dot(M,H.T)[zeros]))
 	mult_factor = scale*np.dot(M,H.T)/(W_est.dot(H).dot(H.T))
 	# raw_input(' ')
 	# print(mult_factor)
 	# raw_input(' ')
-	print(np.sum(np.isnan(W_est)))
+	# print(np.sum(np.isnan(W_est)))
 	W_est[nonzero_indices] = W_est[nonzero_indices]*mult_factor[nonzero_indices]
-	print(np.sum(np.isnan(W_est)))
+	# print(np.sum(np.isnan(W_est)))
 	return W_est
 
 def multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1):

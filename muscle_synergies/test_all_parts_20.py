@@ -18,7 +18,7 @@ import sys
 
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
-S = 20
+S = 50
 T = 15    #synergy duration in time steps
 N = 3 #number of synergies
 
@@ -122,11 +122,20 @@ for i in range(1,N+1):
 
 # util.test_Theta(Theta)
 
-error = np.inf
+# error = np.inf
 
-error_threshold = 1e-6
-error = substeps.compute_squared_error(W_est,c_est,np.zeros_like(c_est),M)
-print('error before starting: '+str(error))
+unexp_var_threshold = 1e-5
+# R2_diff_threshold = 1e-7
+# R2 = np.zeros(2)
+SS_tot = substeps.compute_total_sum_squares(M)
+print(SS_tot)
+SS_res = substeps.compute_squared_error(W_est,c_est,np.zeros_like(c_est),M) #*****change this to have actual shifts
+print(SS_res)
+# R2[1] =  (1. - (SS_res/SS_tot))
+R2 =  (1. - (SS_res/SS_tot))
+
+# print('R2 before starting: '+str(R2[1]))
+print('R2 before starting: '+str(R2))
 
 
 ims = []
@@ -166,27 +175,41 @@ W_est = util.spread(W_est)
 
 
 counter = 1
-while error>error_threshold:
+# while abs(np.diff(R2))>R2_diff_threshold:
+while abs(1.-R2)>unexp_var_threshold:
+    print('--------------ITERATION: '+str(counter)+'---------------')
+    # print('R2 diff: '+str(abs(np.diff(R2)[0])))
     last = time.time()
     #Delay update
     delays = substeps.update_delay(stacked_M,util.stack(W_est,T),c_est,S) #size of delays (t) is S x N
 
     Theta_i_tis = Theta[0,util.t_shift_to_index(delays[0,0],T),:,:]
 
-    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,t,stacked_M)
-    print('error after delay update: '+str(error))
+    SS_res = substeps.compute_squared_error(
+        util.stack(W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
+    # R2[0] = R2[1]
+    # R2[1] =  (1. - (SS_res/SS_tot))
+    R2 =  (1. - (SS_res/SS_tot))
+
+    # print(SS_res,SS_tot)
+
+    # print('R2 after delay update: '+str(R2[1]))
+    print('R2 after delay update: '+str(R2))
 
     #update H with current delays
     H = util.construct_H(c_est,Theta,delays)
 
     #c update
     c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
-    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
+    SS_res = substeps.compute_squared_error(util.stack(
+        W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
+    # R2[1] =  (1. - SS_res/SS_tot)
+    R2 =  (1. - SS_res/SS_tot)
 
-
-    print('c_est: ' + str(c_est[display_episode]))
-    print('true_c: ' + str(true_c[display_episode]))
-    print('error after c update: '+str(error))
+    # print('c_est: ' + str(c_est[display_episode]))
+    # print('true_c: ' + str(true_c[display_episode]))
+    # print('R2 after c update: '+str(R2[1]))
+    print('R2 after c update: '+str(R2))
 
     #Update H with new c's
     H = util.construct_H(c_est,Theta,delays)
@@ -195,9 +218,14 @@ while error>error_threshold:
 
     #W update
     W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
-    error = substeps.compute_squared_error(util.stack(W_est,T),c_est,delays,stacked_M)
-    print('error after W update: '+str(error))
-    print('delays: '+str(t))
+    SS_res = substeps.compute_squared_error(util.stack(
+        W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
+    # R2[1] =  (1. - SS_res/SS_tot)
+    R2 =  (1. - SS_res/SS_tot)
+
+    # print('R2 after W update: '+str(R2[1]))
+    print('R2 after W update: '+str(R2))
+    # print('delays: '+str(t))
 
     #Display current W_est estimates
     W_est = util.stack(W_est,T)
@@ -218,7 +246,7 @@ while error>error_threshold:
 
 
         partners = np.array([true_partners,est_partners])
-        print(partners)
+        # print(partners)
 
         for i in range(N):
             true_syn_partners[partners[0,0]] = partners[1,0]
@@ -228,7 +256,7 @@ while error>error_threshold:
         true_syn_partners = true_syn_partners.astype('int')
         # raw_input(' ')
 
-    print('TRUE SYN PARTNERS: '+str(true_syn_partners))
+    # print('TRUE SYN PARTNERS: '+str(true_syn_partners))
     #Then, display them
     for i in range(N):
     	im = ims[i]
@@ -239,9 +267,9 @@ while error>error_threshold:
     # Display the c_est, scaled to match the true_c magnitude
     plt.figure(1)
     for i in range(N):
-        max_W_est = np.max(W_est[i,:,:])
+        max_W_est = np.max(W_est[true_syn_partners[i],:,:])
         max_W = np.max(W[i,:,:])
-        c_est_scaled = c_est[display_episode,i]*max_W_est/max_W
+        c_est_scaled = c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
         c_text = c_texts[true_syn_partners[i]]
         c_text.set_text(str(c_est_scaled)[:5])
 
@@ -261,10 +289,10 @@ while error>error_threshold:
         line.set_ydata(M_est_ep[d,:])
     plt.draw()
     plt.pause(0.02)
-    print('--------------ITERATION: '+str(counter)+'---------------')
     counter+=1
 
 
 
 
 plt.show()
+raw_input(' ')
