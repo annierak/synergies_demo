@@ -57,11 +57,13 @@ def shiftedColorMap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
     return newcmap
 
 
-def strip_bare(ax):
-    ax.set_xticks([])
-    ax.set_xticklabels('')
-    ax.set_yticks([])
-    ax.set_yticklabels('')
+def strip_bare(ax,axis=None):
+    if axis!='y':
+        ax.set_xticks([])
+        ax.set_xticklabels('')
+    if axis!='x':
+        ax.set_yticks([])
+        ax.set_yticklabels('')
 
-def strip_ticks(ax):
-   ax.tick_params(axis=u'both', which=u'both',length=0)
+def strip_ticks(ax,axis=u'both'):
+   ax.tick_params(axis=axis, which='both',length=0)
