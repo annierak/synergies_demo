@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import plotting_utls as pltuls
 import time
 import sys
+import scipy
 
 
 D = 5 #number of muscles
@@ -35,3 +36,5 @@ for i in range(N):
 plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
 plt.show()
+
+#-------Compute the subspace similarity as in Tresch, Cheung 2006------#
