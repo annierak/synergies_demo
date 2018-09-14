@@ -8,10 +8,12 @@ import flylib as flb
 import cairo
 import rsvg
 import networkx as nx
+import plotting_utls as pltutls
 # import faulthandler; faulthandler.enable()
 
 fly_num = 1548
-corr_window_size = 5
+disp_window_size = 4
+corr_window_size = 1
 frames_per_step=5
 t=0
 
@@ -34,7 +36,15 @@ except(OSError):
 
 flydf = fly.construct_dataframe()
 
+
+
 dt = frames_per_step*(flydf['t'][1]-flydf['t'][0])
+corr_window_size = np.floor(corr_window_size/dt)*dt
+disp_window_size = np.floor(disp_window_size/dt)*dt
+
+steps_per_disp_window = int(disp_window_size/dt)
+steps_per_corr_window = int(corr_window_size/dt)
+
 
 filtered_muscle_cols = \
 ['iii1_left', 'iii3_left',
@@ -74,19 +84,42 @@ for cull in cull_list:
 #raw_input(' ')
 
 plt.ion()
-fig = plt.figure(1,figsize=(5,8))
+fig = plt.figure(1,figsize=(6,12))
 filename = 'f_egg'
 layout = fifi.FigureLayout('graph_layout.svg')#,make_mplfigures=True)
 metadata = {'title' : filename,}
 # im = plt.imshow(np.random.randn(10,10))
 counter=0
+t=0
+
+time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+kin_values_by_t = np.zeros(steps_per_disp_window)
+
+nonan_amp_diff = flydf['amp_diff'][~np.isnan(flydf['amp_diff'])]
+min_kin,max_kin = np.percentile(nonan_amp_diff,5),np.percentile(nonan_amp_diff,95)
+
+# print(min_kin,max_kin)
+# raw_input(' ')
+
+kinax = plt.subplot2grid((8,2),(1,0),colspan=2)
+lines, = plt.plot(kin_values_by_t)
+plt.title('Wing Kinematics')
+plt.xlabel('Time (s)')
+plt.ylim([min_kin,max_kin])
+
+plt.text(0.5,.9,'Trial Type:',fontsize=14,transform=plt.gcf().transFigure,
+    horizontalalignment='center')
+trial = plt.text(0.5,0.88,'trial',transform=plt.gcf().transFigure,
+    horizontalalignment='center')
 
 
 frame_rate = 20
-counter =0
-simulation_time = 4*60
+video_time = 4*60
 
-#im = plt.imshow(np.random.randn(10,10))
+ax = plt.subplot2grid((8,2),(3,0),colspan=2,rowspan=5)
+im = plt.imshow(np.random.randn(80,60))
+pltutls.strip_bare(ax)
+
 #counter=0
 FFMpegWriter = animate.writers['ffmpeg']
 writer = FFMpegWriter(fps=frame_rate, metadata=metadata)
@@ -98,15 +131,13 @@ for i,muscle in enumerate(filtered_muscle_cols):
     muscle_labels[i] = '%s_%s'%(n2[0].capitalize(), n1)
 
 # def updatefig(*args):
-while t<simulation_time:
+while t<video_time:
     global counter,t
-    # print(counter)
     print(t)
     time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+
+    #(1) --------Correlation Matrix----------
     state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
-    # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
-    # print(np.shape(state_mtrx))
-    #state_mtrx = np.array(flydf.loc[time_window_inds,filtered_muscle_cols]).T
     #Watch out for muscles that have no activity
     off_muscle_inds = (np.sum(state_mtrx,axis=1)==0.)
     # Set them to a very small amt of activity so nan's are not created
@@ -114,7 +145,6 @@ while t<simulation_time:
     centered_mtrx = state_mtrx - np.mean(state_mtrx,axis = 1)[:,None]
     std_mtrx = centered_mtrx/np.std(centered_mtrx,axis = 1)[:,None]
     cor_mtrx = np.dot(std_mtrx,std_mtrx.T)
-
 
     G = nx.Graph()
     for i,lbl1 in enumerate(muscle_labels):
@@ -127,9 +157,7 @@ while t<simulation_time:
 
     h = float(layout.layout_uh)
     pos_dict = {}
-    # print('here')
     for n in G.nodes():
-    # for n in G.nodes_iter():
         cx = float(layout.pathspecs[n]['cx'])
         cy = h-float(layout.pathspecs[n]['cy'])
         try:
@@ -143,47 +171,49 @@ while t<simulation_time:
         except KeyError:
             print n
 
-    # edges= G.edges_iter()
     edges= G.edges()
-    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/1e5 for e in edges]
-    # print(pos_dict)
-    # nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
-    #         font_color = 'r', with_labels= False, width = weights,
-    #         edge_color = colors, node_color = 'k', alpha = 0.1)
-    plt.figure(1)
-    # print(pos_dict)
+    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/(2e3) for e in edges]
+    fig2 = plt.figure(2,figsize=(5,8))
     weights = np.array(weights)
     weights[np.isnan(weights)]=0.
     weights[np.isinf(weights)]=0.
     weights = list(np.array(weights).astype(str))
-    # print(weights)
-    # print(colors)
-    # plt.gcf().canvas.flush_events()
     plt.clf()
     nx.draw(G, pos = pos_dict,
-            font_color = 'k', with_labels= True, width = weights,
+            font_color = 'r', with_labels= True, width = weights,
             edge_color = colors, node_color = 'k', alpha = 0.3)
-    plt.show()
-    # raw_input(' ')
-    fig.savefig(filename+'.png')
-    plt.pause(0.01)
+    fig2.savefig(filename+'.png')
 
-    # layout.axes['network_graph_layout'].set_ybound(0,layout.axes['network_graph_layout'].h)
-    # layout.axes['network_graph_layout'].set_xbound(0,layout.axes['network_graph_layout'].w)
+    imported_image = plt.imread(filename+'.png',format='png')
+    height,width,_ = np.shape(imported_image)
+    imported_image = imported_image[int(np.floor(height/10)):int(np.floor(height-height/8)),:,:]
+    im.set_array(imported_image)
 
-    # print('here1')
-    # layout.save(filename+'.svg',)
-    # svg_data = open(filename+'.svg', 'r').read()
-    # render_svg_to_png(svg_data,filename+'_'+str(counter)+'.png')
-    # imported_image = plt.imread(filename+'.png',format='png')
-    plt.imread(filename+'.png',format='png')
-    # im.set_array(imported_image)
-    plt.show()
-    # print('here2')
+    x_values = np.linspace(t,t+disp_window_size,steps_per_disp_window)
+
+
+    #(2) Wing Kinematics
+    kin_value = flydf.iloc[counter]['amp_diff']
+    if counter<steps_per_disp_window:
+        kin_values_by_t[counter] = kin_value
+    else:
+        try:
+            hl.remove()
+        except(NameError):
+            pass
+        kin_values_by_t[:-1] = kin_values_by_t[1:]
+        kin_values_by_t[-1] = kin_value
+        kinax.set_xlim((t,t+disp_window_size))
+        lines.set_ydata(kin_values_by_t)
+        lines.set_xdata(x_values)
+        hl = kinax.axvspan(x_values[steps_per_disp_window-steps_per_corr_window-1], x_values[steps_per_disp_window-1],
+            facecolor='b', alpha=0.5,transform=kinax.transAxes)
+        writer.grab_frame()
+        trial.set_text(flydf.iloc[counter]['stimulus'])
+
     counter+=1
-    # print(np.shape(imported_image))
-    writer.grab_frame()
-    # return im,
+    plt.pause(0.01)
+    plt.show()
     t+=dt
 writer.finish()
 # ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)

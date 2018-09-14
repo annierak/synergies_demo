@@ -77,7 +77,7 @@ simulation_time = 60
 
 
 fig = plt.figure()
-file_name = 'f_egg'
+file_name = 'f_egg_913'
 metadata = {'title' : file_name,}
 layout = fifi.FigureLayout('graph_layout.svg',make_mplfigures=True)
 #im = plt.imshow(np.random.randn(10,10))
@@ -95,7 +95,7 @@ while t < simulation_time:
     t+=dt
     print(counter)
     plt.ion()
-    fig=plt.figure()
+    # fig=plt.figure()
     time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
     state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
     # state_mtrx = np.vstack([flydf[key] for key in sorted_keys])
@@ -138,41 +138,9 @@ while t < simulation_time:
                 pos_dict[n]  = (cx,cy)
         except KeyError:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
             print n
 
-    edges= G.edges
+    edges= G.edges()
     weights = [np.abs(G[e[0]][e[1]]['weight'])**2.6/100000000000. for e in edges]
     nx.draw(G,ax = layout.axes['network_graph_layout'], pos = pos_dict,
             font_color = 'r', with_labels= False, width = weights,
