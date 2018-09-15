@@ -14,8 +14,7 @@ import plotting_utls as pltutls
 fly_num = 1548
 disp_window_size = 4
 corr_window_size = 1
-frames_per_step=5
-t=0
+frames_per_step=1
 
 def render_svg_to_png(svg_data,filename):
     # Render
@@ -85,20 +84,29 @@ for cull in cull_list:
 
 dpi = 600
 
+#--------------HERE IS WHERE YOU SPECIFY THE TRIAL-----------------------
+trial_str = 'cl_blocks, g_x=-1, g_y=0, b_x=0, b_y=0, ch=1'
+counter=np.where(flydf['stimulus']==trial_str)[0][0]
+t=flydf.iloc[counter]['t']
+#------------------------------------------------------------------------
+
 plt.ion()
 fig = plt.figure(1,figsize=(6,12))#,dpi=dpi)
-filename = 'f_egg_entire_fly_400_'+str(fly_num)
+filename = 'f_egg_entire_fly_'+str(fly_num)+'_'+trial_str
 layout = fifi.FigureLayout('graph_layout.svg')#,make_mplfigures=True)
 metadata = {'title' : filename,}
 # im = plt.imshow(np.random.randn(10,10))
-counter=0
-t=400.
 
-time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+
+
+# time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+print(counter+steps_per_corr_window)
+time_window_inds = np.arange(counter,counter+steps_per_corr_window)
+
 kin_values_by_t = np.zeros(steps_per_disp_window)
 
 nonan_amp_diff = flydf['amp_diff'][~np.isnan(flydf['amp_diff'])]
-min_kin,max_kin = np.percentile(nonan_amp_diff,2),np.percentile(nonan_amp_diff,98)
+min_kin,max_kin = np.percentile(nonan_amp_diff,0.5),np.percentile(nonan_amp_diff,99.5)
 
 # print(min_kin,max_kin)
 # raw_input(' ')
@@ -137,10 +145,11 @@ for i,muscle in enumerate(filtered_muscle_cols):
     muscle_labels[i] = '%s_%s'%(n2[0].capitalize(), n1)
 
 # def updatefig(*args):
-while t<video_time:
-    global counter,t
+while flydf.iloc[counter]['stimulus']==trial_str:
+    # global counter,t
     print(t)
-    time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+    # time_window_inds = (flydf['t']>t)&(flydf['t']<=t+corr_window_size)
+    time_window_inds = np.arange(counter,counter+steps_per_corr_window)
 
     #(1) --------Correlation Matrix----------
     state_mtrx = np.vstack([flydf[key][time_window_inds] for key in sorted_keys])
@@ -178,7 +187,7 @@ while t<video_time:
             print n
 
     edges= G.edges()
-    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/(2e3) for e in edges]
+    weights = [np.abs(G[e[0]][e[1]]['weight'])**2.5/(1e3) for e in edges]
     fig2 = plt.figure(2,figsize=(5,8))
     weights = np.array(weights)
     weights[np.isnan(weights)]=0.
@@ -220,9 +229,12 @@ while t<video_time:
 
 
     counter+=1
-    # plt.pause(0.01)
     plt.draw()
+
+    #Comment these out to save video
+    # plt.pause(0.01)
     # plt.show()
+
     t+=dt
 writer.finish()
 # ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
