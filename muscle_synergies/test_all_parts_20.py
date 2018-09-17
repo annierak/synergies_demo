@@ -178,7 +178,6 @@ counter = 1
 # while abs(np.diff(R2))>R2_diff_threshold:
 while abs(1.-R2)>unexp_var_threshold:
     print('--------------ITERATION: '+str(counter)+'---------------')
-    # print('R2 diff: '+str(abs(np.diff(R2)[0])))
     last = time.time()
     #Delay update
     delays = substeps.update_delay(stacked_M,util.stack(W_est,T),c_est,S) #size of delays (t) is S x N
@@ -187,13 +186,7 @@ while abs(1.-R2)>unexp_var_threshold:
 
     SS_res = substeps.compute_squared_error(
         util.stack(W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    # R2[0] = R2[1]
-    # R2[1] =  (1. - (SS_res/SS_tot))
     R2 =  (1. - (SS_res/SS_tot))
-
-    # print(SS_res,SS_tot)
-
-    # print('R2 after delay update: '+str(R2[1]))
     print('R2 after delay update: '+str(R2))
 
     #update H with current delays
@@ -204,7 +197,6 @@ while abs(1.-R2)>unexp_var_threshold:
     c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    # R2[1] =  (1. - SS_res/SS_tot)
     R2 =  (1. - SS_res/SS_tot)
 
     # print('c_est: ' + str(c_est[display_episode]))
@@ -223,7 +215,6 @@ while abs(1.-R2)>unexp_var_threshold:
     W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    # R2[1] =  (1. - SS_res/SS_tot)
     R2 =  (1. - SS_res/SS_tot)
 
     # print('R2 after W update: '+str(R2[1]))
@@ -235,32 +226,8 @@ while abs(1.-R2)>unexp_var_threshold:
 
     if counter%5==1:
         #First, figure out what order the W_ests match up to the true Ws
-        true_synergies = range(N)
-        est_synergies = range(N)
-        true_syn_partners = np.zeros(N)
-        matching_scores = np.array(
-        [[np.sum(np.abs(
-            util.normalize(W[true_synergy,:,:])-
-                util.normalize(W_est[est_synergy,:,:])))
-             for est_synergy in est_synergies]
-             for true_synergy in true_synergies])
-        true_partners,est_partners = np.unravel_index(
-            np.argsort(matching_scores,axis=None),np.shape(matching_scores))
-
-
-        partners = np.array([true_partners,est_partners])
-        # print(partners)
-
-        for i in range(N):
-            true_syn_partners[partners[0,0]] = partners[1,0]
-            cols_to_keep = (partners[1,:]!=partners[1,0]) & (partners[0,:]!=partners[0,0])
-            partners = partners[:,cols_to_keep]
-
-        true_syn_partners = true_syn_partners.astype('int')
-        # raw_input(' ')
-
-    # print('TRUE SYN PARTNERS: '+str(true_syn_partners))
-    #Then, display them
+        true_syn_partners = substeps.match_synergy_estimates_td(W,W_est)
+        #Then, display them
     for i in range(N):
     	im = ims[i]
         max_value = np.max(W_est[true_syn_partners[i],:,:])

@@ -295,6 +295,55 @@ def compute_error_by_trace(M,W,C):
 	diff = M-W.dot(C)
 	return np.trace(np.dot(diff.T,diff))
 
+def match_synergy_estimates_sync(W,W_est):
+	_,N = np.shape(W_est)
+    true_synergies = range(N)
+    est_synergies = range(N)
+    true_syn_partners = np.zeros(N)
+    matching_scores = np.array(
+    [[np.sum(np.abs(
+        util.normalize(W[:,true_synergy])-
+            util.normalize(W_est[:,est_synergy])))
+         for est_synergy in est_synergies]
+         for true_synergy in true_synergies])
+    true_partners,est_partners = np.unravel_index(
+        np.argsort(matching_scores,axis=None),np.shape(matching_scores))
+    partners = np.array([true_partners,est_partners])
+    for i in range(N):
+        true_syn_partners[partners[0,0]] = partners[1,0]
+        cols_to_keep = (partners[1,:]!=partners[1,0]) & (partners[0,:]!=partners[0,0])
+        partners = partners[:,cols_to_keep]
+    true_syn_partners = true_syn_partners.astype('int')
+	return true_syn_partners
+
+def match_synergy_estimates_td(W,W_est):
+	N,_,_ = np.shape(W_est)
+    true_synergies = range(N)
+    est_synergies = range(N)
+    true_syn_partners = np.zeros(N)
+    matching_scores = np.array(
+    [[np.sum(np.abs(
+        util.normalize(W[true_synergy,:,:])-
+            util.normalize(W_est[est_synergy,:,:])))
+         for est_synergy in est_synergies]
+         for true_synergy in true_synergies])
+    true_partners,est_partners = np.unravel_index(
+        np.argsort(matching_scores,axis=None),np.shape(matching_scores))
+
+    partners = np.array([true_partners,est_partners])
+
+    for i in range(N):
+        true_syn_partners[partners[0,0]] = partners[1,0]
+        cols_to_keep = (partners[1,:]!=partners[1,0]) & (partners[0,:]!=partners[0,0])
+        partners = partners[:,cols_to_keep]
+
+    true_syn_partners = true_syn_partners.astype('int')
+
+
+	return true_syn_partners
+
+
+
 def mult_update_c_synchronous(M,W_est,C_est):
 	num = np.dot(W_est.T,M)
 	denom = (W_est.T).dot(W_est).dot(C_est)
