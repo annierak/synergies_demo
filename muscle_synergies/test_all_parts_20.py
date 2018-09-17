@@ -92,8 +92,8 @@ im = plt.imshow(
 pltuls.strip_ticks(ax)
 plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
-#Construct the theta matrix (described in d'Avella 2003 pg. 2003)
-Theta = construct_Theta(N,T):
+#Construct the theta matrix (described in d'Avella 2003 pg. 307)
+Theta = substeps.construct_Theta(N,T)
 # util.test_Theta(Theta)
 
 #Compute initial R^2

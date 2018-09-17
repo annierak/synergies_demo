@@ -13,7 +13,7 @@ import plotting_utls as pltuls
 import time
 import sys
 import scipy.linalg
-
+import synergy_estimators
 
 #Constants used for the script
 num_reps = 25
@@ -62,18 +62,18 @@ for k in range(num_reps): #Each rep is a new iteration of the algorithm
         pltuls.strip_ticks(ax,axis='y')
     plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
-    #Initialize estimated C and W (which designate M_est)
-    C_est = np.random.uniform(0,1,(N,T))
-    W_est = np.random.uniform(0,1,(D,N))
-    M_est = np.dot(W_est,C_est)
+    #Initialize synergy estimators
+    synergy_estimator = synergy_estimators.SynchronousSynergyEstimator(
+        D,T,N,M_nsy)
 
     #Plot the W_ests
     ims = []
     plt.figure(1)
     for i in range(N):
         ax = plt.subplot2grid((N,3),(i,2))
-        im = plt.imshow(W_est[:,i].T[:,None],interpolation='none',
-        aspect=3./D,cmap=colormap,vmin=0,vmax=1)
+        im = plt.imshow(synergy_estimator.W_est[:,i].T[
+            :,None],interpolation='none',aspect=3./D,
+                cmap=colormap,vmin=0,vmax=1)
         pltuls.strip_bare(ax,axis='x')
         pltuls.strip_ticks(ax,axis='y')
         ims.append(im)
@@ -85,7 +85,7 @@ for k in range(num_reps): #Each rep is a new iteration of the algorithm
     for i in range(N):
         ax = plt.subplot2grid((N,3),(i,1))
         plt.bar(np.arange(D),util.normalize(W[:,i]),bar_width,color='r')
-        barcollection = plt.bar(np.arange(D)+bar_width,util.normalize(W_est[:,i]),bar_width,color='b')
+        barcollection = plt.bar(np.arange(D)+bar_width,util.normalize(synergy_estimator.W_est[:,i]),bar_width,color='b')
         plt.ylim([0,1.5])
         pltuls.strip_bare(ax,axis='y')
         barcollections.append(barcollection)
@@ -94,51 +94,46 @@ for k in range(num_reps): #Each rep is a new iteration of the algorithm
     #Plot the collected (noisy) M, and the current estimate of M
     plt.figure(2)
     plt.subplot(2,1,1)
-    plt.imshow(M_nsy,interpolation='none',cmap=colormap,vmin=0,vmax=1)
+    plt.imshow(synergy_estimator.M,interpolation='none',cmap=colormap,vmin=0,vmax=1)
     plt.title('True M')
     plt.subplot(2,1,2)
-    im1 = plt.imshow(M_est,interpolation='none',cmap=colormap,vmin=0,vmax=1)
+    im1 = plt.imshow(synergy_estimator.M_est,interpolation='none',cmap=colormap,vmin=0,vmax=1)
     plt.title('Estim. M')
 
     #Show plots thus far
     plt.show()
 
-    error = substeps.compute_error_by_trace(M_nsy,W_est,C_est) #Initial error computation
-
     counter = 1
-    while error/SS_tot > error_threshold:
+    while synergy_estimator.compute_oneminusrsq() > synergy_estimator.error_threshold:
         # print('----ITERATION----'+str(counter))
         # print('error: '+str(error/SS_tot))
 
         #multiplicative update of estimated W and C (d'Avella and Bizzi 2005 supplemental text)
-        C_est = substeps.mult_update_c_synchronous(M_nsy,W_est,C_est)
-        W_est = substeps.mult_update_W_synchronous(M_nsy,W_est,C_est)
+        synergy_estimator.update_C()
+        synergy_estimator.update_W()
         if counter%25==1:
             #Match estimated Ws to true Ws
-            true_syn_partners = substeps.match_synergy_estimates_sync(W,W_est)
+            true_syn_partners = substeps.match_synergy_estimates_sync(W,synergy_estimator.W_est)
 
             #update W_est image and bar plot, M_est image
             for i in range(N):
                 im = ims[i]
-                im.set_data(util.normalize(W_est[:,true_syn_partners[i]]).T[:,None])
+                im.set_data(util.normalize(synergy_estimator.W_est[:,true_syn_partners[i]]).T[:,None])
             for i in range(N):
                 barcollection = barcollections[i]
-                W_est_i_normed = util.normalize(W_est[:,true_syn_partners[i]])
+                W_est_i_normed = util.normalize(synergy_estimator.W_est[:,true_syn_partners[i]])
                 for d,bar in enumerate(barcollection):
                     bar.set_height(W_est_i_normed[d])
-            M_est = np.dot(W_est,C_est)
-            im1.set_data(M_est)
+            im1.set_data(synergy_estimator.M_est)
 
             plt.pause(0.00001)
 
-        #Recompute error
-        error = substeps.compute_error_by_trace(M_nsy,W_est,C_est)
         counter+=1
 
     #-----Similarity metrics for this particular algorithm iteration
 
     #(1) the subspace similarities
-    angles = scipy.linalg.subspace_angles(W,W_est)
+    angles = scipy.linalg.subspace_angles(W,synergy_estimator.W_est)
     #Compute the average of the cosines of the principal angles
     subspace_similarities_b_s[1,k] = np.mean(np.cos(angles))
     #Compute the d_b for principal angles
@@ -146,26 +141,26 @@ for k in range(num_reps): #Each rep is a new iteration of the algorithm
     W_b = np.random.exponential(1./lam,(num_reps-1,D,N))
     d_bs_cos = np.zeros(num_reps-1)
     for j in range(num_reps-1):
-        angles = scipy.linalg.subspace_angles(W_b[j,:,:],W_est)
+        angles = scipy.linalg.subspace_angles(W_b[j,:,:],synergy_estimator.W_est)
         d_bs_cos[j] = np.mean(np.cos(angles))
     subspace_similarities_b_s[0,k] = np.mean(d_bs_cos)
 
     #(2) the basis vector similarities
     basis_vector_similarities_b_s[1,k] = np.mean(
-        [np.corrcoef(W[:,i],W_est[:,true_syn_partners[i]]) for i in range(N)])
+        [np.corrcoef(W[:,i],synergy_estimator.W_est[:,true_syn_partners[i]]) for i in range(N)])
     d_bs_vectors = np.zeros(num_reps-1)
     for j in range(num_reps-1):
         d_bs_vectors[j] = np.mean(
-        [np.corrcoef(W_b[j,:,i],W[:,true_syn_partners[i]]) for i in range(N)])
+        [np.corrcoef(W_b[j,:,i],synergy_estimator.W_est[:,true_syn_partners[i]]) for i in range(N)])
     basis_vector_similarities_b_s[0,k] = np.mean(d_bs_vectors)
 
     #(3) the coefficent similarities
     coefficient_similarities_b_s[1,k]  = np.mean(
-        [np.corrcoef(C[i,:],C_est[true_syn_partners[i],:]) for i in range(N)])
+        [np.corrcoef(C[i,:],synergy_estimator.C_est[true_syn_partners[i],:]) for i in range(N)])
     d_bs_coeffs = np.zeros(num_reps-1)
     for j in range(num_reps-1):
         d_bs_coeffs[j]= np.mean(
-        [np.corrcoef(C_b[j,i,:],C_est[true_syn_partners[i],:]) for i in range(N)])
+        [np.corrcoef(C_b[j,i,:],synergy_estimator.C_est[true_syn_partners[i],:]) for i in range(N)])
     coefficient_similarities_b_s[0,k] = np.mean(d_bs_coeffs)
 
 
