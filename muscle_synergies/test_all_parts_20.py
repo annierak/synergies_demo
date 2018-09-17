@@ -9,60 +9,51 @@ import plotting_utls as pltuls
 import time
 import sys
 
-
-
-
 # ==========
-# This piece is for testing the entire updating process (shifts, coefficients, Ws)
+# This script implements and tests the multiplicative update NMF algorithm for muscle synergies
 # ==========
 
+#constants
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
-S = 50
+S = 50 #Number of episodes
 T = 15    #synergy duration in time steps
 N = 3 #number of synergies
+display_episode = 0 #Which episode to display in plots/video
+unexp_var_threshold = 1e-5 #For error tolerance
 
-#We want to construct an M that is made of shifted Gaussians added together
-
+#Construct an M that is made of shifted Gaussians added together
 # construct the synergies as Gaussians
 variances = np.random.uniform(0.5*T/5,T/5,(N,D))
 means = np.random.uniform(1,T,(N,D))
 W = util.gauss_vector(T,means,variances)
-
-
 #Scale the synergies with a different amplitude for each muscle/synergy time course
 amp_max = 1
 amplitudes = np.random.uniform(0,amp_max,(1,N,D))
 c_min = 0
 c_max = 1
-
 W = amplitudes*W
 
 plt.ion()
 fig = plt.figure(1)
 
-#----This bit is for video making---------
+#Prepare video
 if len(sys.argv)>1:
     video_name = sys.argv[1]
     FFMpegWriter = animate.writers['ffmpeg']
     metadata = {'title':video_name,}
     writer = FFMpegWriter(fps=10, metadata=metadata)
     writer.setup(fig, video_name+'.mp4', 500)
-#------------------------------------------
+#Display the true W
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,0))
     plt.imshow(W[:,i,:].T,interpolation='none',
     aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
     pltuls.strip_ticks(ax)
-
 plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
-# plt.show()
 
-#Make some coeffients c and multiply W by that coefficient for each synergy
-
-display_episode = 0
-
+#Construct true coeffients
 true_c = np.random.uniform(c_min,c_max,(S,N))
 plt.figure(1)
 for i in range(N):
@@ -73,11 +64,11 @@ for i in range(N):
         fontsize=25)
 W = np.moveaxis(W,0,2)
 
-pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
-
 #Now make M by adding each of these scaled shifted N synergies muscle-wise
+pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
 M = np.squeeze(np.sum(pre_sum_M,axis=1)) #M is S x D x T
 
+#Initialize W and C estimates
 W_est = substeps.initialize_W(N,D,T) #size of W is N x D x T
 c_est = substeps.initialize_c(S,N) #size of c is S x N
 
@@ -94,7 +85,6 @@ for d in range(D):
     plt.ylim([0,1])
     line, = plt.plot(M_est[display_episode,d,:])
     lines.append(line)
-
 plt.figure(300)
 im = plt.imshow(
     M[0,:,:],interpolation='none',
@@ -102,42 +92,17 @@ im = plt.imshow(
 pltuls.strip_ticks(ax)
 plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
-
-
-
-Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
-
-
-for i in range(1,N+1):
-    for t in range(1-T,T):
-        rows,columns = np.indices((N*T,T))
-        to_fill = (rows+1-(i-1)*T)==(columns+1-t)
-        to_fill[0:(i-1)*T,:] = 0.
-        to_fill[i*T:,:] = 0.
-        Theta[i-1,util.t_shift_to_index(t,T),:,:] = to_fill
-        # plt.figure(544)
-        # plt.imshow(Theta[i-1,util.t_shift_to_index(t,T),:,:],interpolation='none')
-        # raw_input(' ')
-
-
+#Construct the theta matrix (described in d'Avella 2003 pg. 2003)
+Theta = construct_Theta(N,T):
 # util.test_Theta(Theta)
 
-# error = np.inf
-
-unexp_var_threshold = 1e-5
-# R2_diff_threshold = 1e-7
-# R2 = np.zeros(2)
+#Compute initial R^2
 SS_tot = substeps.compute_total_sum_squares(M)
-print(SS_tot)
 SS_res = substeps.compute_squared_error(W_est,c_est,np.zeros_like(c_est),M) #*****change this to have actual shifts
-print(SS_res)
-# R2[1] =  (1. - (SS_res/SS_tot))
 R2 =  (1. - (SS_res/SS_tot))
-
-# print('R2 before starting: '+str(R2[1]))
 print('R2 before starting: '+str(R2))
 
-
+#Plot estimated W, c
 ims = []
 W_est_axes = []
 plt.figure(1)
@@ -150,8 +115,7 @@ for i in range(N):
     plt.colorbar()
     ims.append(im)
     pltuls.strip_ticks(ax)
-
-#Display scaled estimated c
+plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
 c_texts = []
 for i in range(N):
     max_W_est = np.max(W_est[i,:,:])
@@ -165,69 +129,52 @@ for i in range(N):
     c_texts.append(c_text)
 
 
-# plt.show()
-
-plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
-
+#Prepare shapes for updates
 stacked_M = np.copy(M)
 M = util.spread(M)  #reshape it so that it's D x T*S
 W_est = util.spread(W_est)
 
 
 counter = 1
-# while abs(np.diff(R2))>R2_diff_threshold:
 while abs(1.-R2)>unexp_var_threshold:
     print('--------------ITERATION: '+str(counter)+'---------------')
-    last = time.time()
-    #Delay update
+    #Update delays and compute updated error
     delays = substeps.update_delay(stacked_M,util.stack(W_est,T),c_est,S) #size of delays (t) is S x N
-
-    Theta_i_tis = Theta[0,util.t_shift_to_index(delays[0,0],T),:,:]
-
     SS_res = substeps.compute_squared_error(
         util.stack(W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
     R2 =  (1. - (SS_res/SS_tot))
     print('R2 after delay update: '+str(R2))
 
-    #update H with current delays
+    #update H with new delays
     H = util.construct_H(c_est,Theta,delays)
 
-    #c update
-    #===========================
+    #update est. c and compute updated error
     c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
     R2 =  (1. - SS_res/SS_tot)
-
     # print('c_est: ' + str(c_est[display_episode]))
     # print('true_c: ' + str(true_c[display_episode]))
-    # print('R2 after c update: '+str(R2[1]))
     print('R2 after c update: '+str(R2))
 
     #Update H with new c's
-    #===========================
     H = util.construct_H(c_est,Theta,delays)
-    #shape of H is N*T x S*T
 
-
-    #W update
-    #===========================
+    #update est W and compute updated error
     W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
     SS_res = substeps.compute_squared_error(util.stack(
         W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
     R2 =  (1. - SS_res/SS_tot)
-
-    # print('R2 after W update: '+str(R2[1]))
     print('R2 after W update: '+str(R2))
     # print('delays: '+str(t))
 
     #Display current W_est estimates
     W_est = util.stack(W_est,T)
 
+    #Match W_ests to true Ws
     if counter%5==1:
-        #First, figure out what order the W_ests match up to the true Ws
         true_syn_partners = substeps.match_synergy_estimates_td(W,W_est)
-        #Then, display them
+    #Display new W_ests
     for i in range(N):
     	im = ims[i]
         max_value = np.max(W_est[true_syn_partners[i],:,:])
@@ -243,15 +190,13 @@ while abs(1.-R2)>unexp_var_threshold:
         c_text = c_texts[true_syn_partners[i]]
         c_text.set_text(str(c_est_scaled)[:5])
 
+    #video frame collection
     if len(sys.argv)>1:
         writer.grab_frame()
 
-
+    #Display new M_est
     plt.figure(200)
-
     W_est = util.spread(W_est)
-
-    #Display new M_est for display episode
     M_est_ep = W_est.dot(util.stack(H,T)[display_episode,:,:])
     for d in range(D):
         plt.subplot(D,1,d+1)
@@ -260,9 +205,6 @@ while abs(1.-R2)>unexp_var_threshold:
     plt.draw()
     plt.pause(0.02)
     counter+=1
-
-
-
 
 plt.show()
 raw_input(' ')

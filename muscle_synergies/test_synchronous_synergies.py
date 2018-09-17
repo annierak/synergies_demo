@@ -47,6 +47,8 @@ for k in range(num_reps): #Each rep is a new iteration of the algorithm
         SS_tot = np.sum(np.square(M_nsy-np.mean(M_nsy)))
         oneminusrsq = SS_res/SS_tot
     print("1 - R^2: "+str(oneminusrsq))
+    #Reassign 1 - R^2
+    oneminusrsq = 5.
 
     plt.ion()
     #Plot the true W
