@@ -27,10 +27,28 @@ def stack(A,T):
 
 def t_index_to_shift(index,T):
 	#for a given time duration T, switch the index of range(1-T,T) to the shift value
-	return (1-T)+index
+	return int((1-T)+index)
 def t_shift_to_index(shift,T):
 	#do the reverse of the above
-	return shift +(T-1)
+	return int(shift +(T-1))
+
+def shift_matrix_columns(column_shift,A,transpose=False):
+    A_copy = np.copy(A)
+    if transpose:
+        A_copy = A_copy.T
+    n_rows,n_cols = np.shape(A_copy)
+    # if np.abs(column_shift)>n_cols:
+    #     raw_input('here'+str(column_shift))
+    # column_shift = np.sign(column_shift)*(np.abs(column_shift)%n_cols)
+    padding = np.zeros((n_rows,n_cols))
+    double_padded = np.hstack((padding,A_copy,padding))
+    starting_index = (n_cols) + (-1)*column_shift
+    ending_index = starting_index+n_cols
+    to_return = double_padded[:,starting_index:ending_index]
+    if transpose:
+        to_return = to_return.T
+    return to_return
+
 
 def construct_H(c_est,Theta,delays):
     S,N = np.shape(delays)

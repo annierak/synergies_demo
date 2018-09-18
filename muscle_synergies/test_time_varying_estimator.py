@@ -1,5 +1,6 @@
 import substeps
 import util
+import synergy_estimators
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -10,7 +11,7 @@ import time
 import sys
 
 # ==========
-# This script implements and tests the multiplicative update NMF algorithm for muscle synergies
+# This script implements and tests the multiplicative update NMF algorithm for time-varying muscle synergies
 # ==========
 
 #constants
@@ -20,7 +21,6 @@ S = 50 #Number of episodes
 T = 15    #synergy duration in time steps
 N = 3 #number of synergies
 display_episode = 0 #Which episode to display in plots/video
-unexp_var_threshold = 1e-5 #For error tolerance
 
 #Construct an M that is made of shifted Gaussians added together
 # construct the synergies as Gaussians
@@ -68,10 +68,9 @@ W = np.moveaxis(W,0,2)
 pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
 M = np.squeeze(np.sum(pre_sum_M,axis=1)) #M is S x D x T
 
-#Initialize W and C estimates
-W_est = substeps.initialize_W(N,D,T) #size of W is N x D x T
-c_est = substeps.initialize_c(S,N) #size of c is S x N
-
+#Construct estimator object
+synergy_estimator = synergy_estimators.TimeDependentSynergyEstimator(
+    S,D,T,N,M)
 #Plot M and M_est
 plt.figure(200)
 for d in range(D):
@@ -79,11 +78,10 @@ for d in range(D):
     plt.plot(M[display_episode,d,:])
 plt.text(0.5,1,'Muscle Activity',transform=plt.gcf().transFigure)
 lines = []
-M_est = np.sum(W_est[None,:,:,:]*c_est[:,:,None,None],axis=1)
 for d in range(D):
     plt.subplot(D,1,d+1)
     plt.ylim([0,1])
-    line, = plt.plot(M_est[display_episode,d,:])
+    line, = plt.plot(synergy_estimator.M_est_stacked[display_episode,d,:])
     lines.append(line)
 plt.figure(300)
 im = plt.imshow(
@@ -92,14 +90,8 @@ im = plt.imshow(
 pltuls.strip_ticks(ax)
 plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
-#Construct the theta matrix (described in d'Avella 2003 pg. 307)
-Theta = substeps.construct_Theta(N,T)
-# util.test_Theta(Theta)
-
 #Compute initial R^2
-SS_tot = substeps.compute_total_sum_squares(M)
-SS_res = substeps.compute_squared_error(W_est,c_est,np.zeros_like(c_est),M) #*****change this to have actual shifts
-R2 =  (1. - (SS_res/SS_tot))
+R2 = synergy_estimator.compute_R2()
 print('R2 before starting: '+str(R2))
 
 #Plot estimated W, c
@@ -110,7 +102,7 @@ for i in range(N):
     ax = plt.subplot2grid((N,2),(i,1))
     W_est_axes.append(ax)
     im = plt.imshow(
-        W_est[i,:,:],interpolation='none',
+        synergy_estimator.W_est_stacked[i,:,:],interpolation='none',
         aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
     plt.colorbar()
     ims.append(im)
@@ -118,9 +110,9 @@ for i in range(N):
 plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
 c_texts = []
 for i in range(N):
-    max_W_est = np.max(W_est[i,:,:])
+    max_W_est = np.max(synergy_estimator.W_est_stacked[i,:,:])
     max_W = np.max(W[i,:,:])
-    c_est_scaled = true_c[display_episode,i]*max_W/max_W_est
+    c_est_scaled = synergy_estimator.c_est[display_episode,i]*max_W/max_W_est
     ax = W_est_axes[i]
     c_text = ax.text(0.5,0.5,str(
         c_est_scaled)[:3],color='purple',
@@ -130,46 +122,42 @@ for i in range(N):
 
 
 #Prepare shapes for updates
-stacked_M = np.copy(M)
-M = util.spread(M)  #reshape it so that it's D x T*S
-W_est = util.spread(W_est)
+# stacked_M = np.copy(M)
+# M = util.spread(M)  #reshape it so that it's D x T*S
+# W_est = util.spread(W_est)
 
 
 counter = 1
-while abs(1.-R2)>unexp_var_threshold:
+while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
+
     print('--------------ITERATION: '+str(counter)+'---------------')
     #Update delays and compute updated error
-    delays = substeps.update_delay(stacked_M,util.stack(W_est,T),c_est,S) #size of delays (t) is S x N
-    SS_res = substeps.compute_squared_error(
-        util.stack(W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    R2 =  (1. - (SS_res/SS_tot))
+    synergy_estimator.update_delays() #size of delays (t) is S x N
+    R2 = synergy_estimator.compute_R2()
     print('R2 after delay update: '+str(R2))
 
     #update H with new delays
-    H = util.construct_H(c_est,Theta,delays)
+    synergy_estimator.update_H()
 
     #update est. c and compute updated error
-    c_est = substeps.multiplicative_update_c(c_est,M,W_est,Theta,H,delays,scale=1)
-    SS_res = substeps.compute_squared_error(util.stack(
-        W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    R2 =  (1. - SS_res/SS_tot)
+    synergy_estimator.update_c_est()
+    R2 = synergy_estimator.compute_R2()
+
     # print('c_est: ' + str(c_est[display_episode]))
     # print('true_c: ' + str(true_c[display_episode]))
     print('R2 after c update: '+str(R2))
 
     #Update H with new c's
-    H = util.construct_H(c_est,Theta,delays)
+    synergy_estimator.update_H()
 
     #update est W and compute updated error
-    W_est = substeps.multiplicative_update_W(M,W_est,H,scale=1)
-    SS_res = substeps.compute_squared_error(util.stack(
-        W_est,T),c_est,np.zeros_like(c_est),stacked_M) #*****change this to have actual shifts
-    R2 =  (1. - SS_res/SS_tot)
+    synergy_estimator.update_W_est()
+    R2 = synergy_estimator.compute_R2()
     print('R2 after W update: '+str(R2))
     # print('delays: '+str(t))
 
     #Display current W_est estimates
-    W_est = util.stack(W_est,T)
+    W_est = synergy_estimator.W_est_stacked
 
     #Match W_ests to true Ws
     if counter%5==1:
@@ -186,7 +174,7 @@ while abs(1.-R2)>unexp_var_threshold:
     for i in range(N):
         max_W_est = np.max(W_est[true_syn_partners[i],:,:])
         max_W = np.max(W[i,:,:])
-        c_est_scaled = c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
+        c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
         c_text = c_texts[true_syn_partners[i]]
         c_text.set_text(str(c_est_scaled)[:5])
 
@@ -196,8 +184,8 @@ while abs(1.-R2)>unexp_var_threshold:
 
     #Display new M_est
     plt.figure(200)
-    W_est = util.spread(W_est)
-    M_est_ep = W_est.dot(util.stack(H,T)[display_episode,:,:])
+    synergy_estimator.update_M_est() #********** this doesn't have t capacities yet
+    M_est_ep = synergy_estimator.M_est_stacked[display_episode,:,:]
     for d in range(D):
         plt.subplot(D,1,d+1)
         line = lines[d]
