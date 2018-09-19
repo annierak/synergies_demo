@@ -157,16 +157,27 @@ class TimeDependentSynergyEstimator(object):
         self.H_stacked = H
         self.H_spread = np.concatenate(H,axis=1)
 
-    def update_c_est(self,scale=1):
-        mult_factor = np.zeros_like(self.c_est)
-        for s in range(self.S):
-            for i in range(self.N):
-                Theta_i_tis = self.Theta[i,util.t_shift_to_index(self.delays[s,i],self.T),:,:]
-                num = np.trace((self.M_stacked[s,:,:].T).dot(self.W_est_spread).dot(Theta_i_tis))
-                denom = np.trace((self.H_stacked[s,:,:].T).dot(
-                    self.W_est_spread.T).dot(self.W_est_spread).dot(Theta_i_tis))
-                mult_factor[s,i] = num/denom
-        self.c_est = self.c_est*scale*mult_factor
+    def update_c_est(self,scale=1,regress=True):
+        if regress:
+            #For regression, shape M to (TxD), for each episode (so S x (TxD))
+            #(reshape by going through each muscle and then to next)
+            M_flat = np.reshape(self.M_stacked,(self.S,self.T*self.D))
+            #Each column of predictor is one synergy, shape (TxD)
+            #predictor has N columns
+            W_flat = np.reshape(self.W_est_stacked,(self.N,self.T*self.D)).T
+            #loop through and do a regression for each episode
+            for s in range(self.S):
+                c_est[s,:],_,_,_ = scipy.linalg.lstsq(W_flat,M_flat)
+        else:
+            mult_factor = np.zeros_like(self.c_est)
+            for s in range(self.S):
+                for i in range(self.N):
+                    Theta_i_tis = self.Theta[i,util.t_shift_to_index(self.delays[s,i],self.T),:,:]
+                    num = np.trace((self.M_stacked[s,:,:].T).dot(self.W_est_spread).dot(Theta_i_tis))
+                    denom = np.trace((self.H_stacked[s,:,:].T).dot(
+                        self.W_est_spread.T).dot(self.W_est_spread).dot(Theta_i_tis))
+                    mult_factor[s,i] = num/denom
+            self.c_est = self.c_est*scale*mult_factor
 
     def update_W_est(self,scale=1):
         zeros = (self.W_est_spread.dot(self.H_spread).dot(self.H_spread.T)==0)

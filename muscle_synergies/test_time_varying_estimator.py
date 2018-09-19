@@ -140,7 +140,7 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
     synergy_estimator.update_H()
 
     #update est. c and compute updated error
-    synergy_estimator.update_c_est()
+    synergy_estimator.update_c_est(regress=True)
     R2 = synergy_estimator.compute_R2()
 
     # print('c_est: ' + str(c_est[display_episode]))
