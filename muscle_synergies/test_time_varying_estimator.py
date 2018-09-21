@@ -45,10 +45,16 @@ if len(sys.argv)>1:
     writer = FFMpegWriter(fps=10, metadata=metadata)
     writer.setup(fig, video_name+'.mp4', 500)
 #Display the true W
+max_W_value = np.max(W)
+true_W_ims = []
+true_W_axes = []
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,0))
-    plt.imshow(W[:,i,:].T,interpolation='none',
-    aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
+    W_im = plt.imshow(W[:,i,:].T,interpolation='none',
+    aspect=T/D,cmap='Greys_r',vmin=0,vmax=max_W_value)
+    plt.colorbar()
+    true_W_axes.append(ax)
+    true_W_ims.append(W_im)
     pltuls.strip_ticks(ax)
 plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
@@ -57,15 +63,21 @@ plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 true_c = np.random.uniform(c_min,c_max,(S,N))
 plt.figure(1)
 for i in range(N):
-    ax = plt.gcf().get_axes()[i]
+    ax = true_W_axes[i]
     ax.text(0.5,0.5,str(
         true_c[display_episode,i])[:5],color='purple',
         horizontalalignment='center',transform=ax.transAxes,
         fontsize=25)
 W = np.moveaxis(W,0,2)
 
+#Construct true delays & shift W
+true_delays = np.random.uniform(-T/3,T/3,(S,N))
+shifted_W = np.array(
+    [[substeps.shift_matrix_columns(int(true_delays[s,i]),W[i,:,:]) \
+        for i in range(N)] for s in range(S)])
+
 #Now make M by adding each of these scaled shifted N synergies muscle-wise
-pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
+pre_sum_M = shifted_W[None,:,:,:]*true_c[:,:,None,None]
 M = np.squeeze(np.sum(pre_sum_M,axis=1)) #M is S x D x T
 
 #Construct estimator object
@@ -83,12 +95,13 @@ for d in range(D):
     plt.ylim([0,1])
     line, = plt.plot(synergy_estimator.M_est_stacked[display_episode,d,:])
     lines.append(line)
-plt.figure(300)
-im = plt.imshow(
-    M[0,:,:],interpolation='none',
-    aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
-pltuls.strip_ticks(ax)
-plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
+#Display muscle Activity
+# plt.figure(300)
+# im = plt.imshow(
+#     M[0,:,:],interpolation='none',
+#     aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
+# pltuls.strip_ticks(ax)
+# plt.text(0.65,0.95,'True M',transform=plt.gcf().transFigure)
 
 #Compute initial R^2
 R2 = synergy_estimator.compute_R2()
@@ -140,7 +153,7 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
     synergy_estimator.update_H()
 
     #update est. c and compute updated error
-    synergy_estimator.update_c_est(regress=True)
+    synergy_estimator.update_c_est()
     R2 = synergy_estimator.compute_R2()
 
     # print('c_est: ' + str(c_est[display_episode]))
@@ -151,7 +164,7 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
     synergy_estimator.update_H()
 
     #update est W and compute updated error
-    synergy_estimator.update_W_est()
+    synergy_estimator.update_W_est(normalize=False)
     R2 = synergy_estimator.compute_R2()
     print('R2 after W update: '+str(R2))
     # print('delays: '+str(t))
@@ -163,11 +176,14 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
     if counter%5==1:
         true_syn_partners = substeps.match_synergy_estimates_td(W,W_est)
     #Display new W_ests
+    max_value = np.max(W_est)
+    # for im in true_W_ims:
+    #     im.set_clim(vmin=0,vmax=max_value )
     for i in range(N):
     	im = ims[i]
-        max_value = np.max(W_est[true_syn_partners[i],:,:])
-    	im.set_data(util.normalize(W_est[true_syn_partners[i],:,:]))
-        im.set_clim(vmin=0,vmax=amp_max)
+    	# im.set_data(util.normalize(W_est[true_syn_partners[i],:,:]))
+    	im.set_data(W_est[true_syn_partners[i],:,:])
+        im.set_clim(vmin=0,vmax=max_value)
 
     # Display the c_est, scaled to match the true_c magnitude
     plt.figure(1)
@@ -175,7 +191,8 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
         max_W_est = np.max(W_est[true_syn_partners[i],:,:])
         max_W = np.max(W[i,:,:])
         c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
-        c_text = c_texts[true_syn_partners[i]]
+        # c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]
+        c_text = c_texts[i]
         c_text.set_text(str(c_est_scaled)[:5])
 
     #video frame collection

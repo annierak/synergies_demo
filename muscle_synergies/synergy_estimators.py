@@ -10,6 +10,7 @@ import plotting_utls as pltuls
 import time
 import sys
 import scipy.linalg
+import scipy.optimize
 
 
 class SynchronousSynergyEstimator(object):
@@ -77,7 +78,7 @@ class TimeDependentSynergyEstimator(object):
 
     def check_shapes(self): #******** this should be more thorough
         if np.shape(self.M_stacked) != (self.S,self.D,self.T):
-            raise Exception('M is not SxDxT, it is shape '+str(np.shape(self.M)))
+            raise Exception('M_stacked is not SxDxT, it is shape '+str(np.shape(self.M_stacked)))
 
     def compute_total_sum_squares(self):
         return np.sum(np.square(self.M_stacked-np.mean(self.M_stacked)))
@@ -157,7 +158,7 @@ class TimeDependentSynergyEstimator(object):
         self.H_stacked = H
         self.H_spread = np.concatenate(H,axis=1)
 
-    def update_c_est(self,scale=1,regress=True):
+    def update_c_est(self,scale=1,regress=False):
         if regress:
             #For regression, shape M to (TxD), for each episode (so S x (TxD))
             #(reshape by going through each muscle and then to next)
@@ -167,7 +168,7 @@ class TimeDependentSynergyEstimator(object):
             W_flat = np.reshape(self.W_est_stacked,(self.N,self.T*self.D)).T
             #loop through and do a regression for each episode
             for s in range(self.S):
-                c_est[s,:],_,_,_ = scipy.linalg.lstsq(W_flat,M_flat)
+                self.c_est[s,:],_ = scipy.optimize.nnls(W_flat,M_flat[s,:])
         else:
             mult_factor = np.zeros_like(self.c_est)
             for s in range(self.S):
@@ -179,11 +180,13 @@ class TimeDependentSynergyEstimator(object):
                     mult_factor[s,i] = num/denom
             self.c_est = self.c_est*scale*mult_factor
 
-    def update_W_est(self,scale=1):
+    def update_W_est(self,scale=1,normalize=False):
         zeros = (self.W_est_spread.dot(self.H_spread).dot(self.H_spread.T)==0)
         nonzero_indices = np.logical_not(zeros)
         mult_factor = scale*np.dot(self.M_spread,self.H_spread.T)/(
             self.W_est_spread.dot(self.H_spread).dot(self.H_spread.T))
         self.W_est_spread[nonzero_indices] = self.W_est_spread[
             nonzero_indices]*mult_factor[nonzero_indices]
+        if normalize:
+            self.W_est_spread = util.normalize(self.W_est_spread)
         self.W_est_stacked = util.stack(self.W_est_spread,self.T)
