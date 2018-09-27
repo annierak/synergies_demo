@@ -5,7 +5,8 @@ import figurefirst as fifi
 import flylib as flb
 from matplotlib import gridspec
 
-fly_num = 1548
+# fly_num = 1548
+fly_num = 1549
 
 try:
     fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
@@ -59,6 +60,7 @@ ax.set_yticklabels('')
 #For each muscle, find the minimum calcium activity during flight 
 #by taking the minimum of the principle lump (part of histogram of
 #calcium values excluding non-flight values)
+cutoffs = []
 for i,muscle in enumerate(filtered_muscle_cols):
 
 	plt.subplot(gs[i+1,-2])
@@ -68,8 +70,13 @@ for i,muscle in enumerate(filtered_muscle_cols):
 	plt.plot(np.diff(n))
 	diffs = np.diff(n)
 	cutoff_index = np.argmax(diffs)
-	cutoff = bins[cutoff_index]
+	#hg3 signal is behaving differently so account for that
+	if filtered_muscle_cols[i][0:3]=='hg3':
+		cutoff= 0
+	else:
+		cutoff = bins[cutoff_index]
 
+	cutoffs.append(cutoff)
 
 	plt.subplot(gs[i+1,:-2])
 	plt.plot(times,muscle_array[:,i])
@@ -85,6 +92,30 @@ for i,muscle in enumerate(filtered_muscle_cols):
 	ax.set_yticks([])
 	ax.set_yticklabels('')
 
+# print(np.min(muscle_array))
+# plt.figure(4)
+# plt.hist(muscle_array[:,1])
+# plt.show()
+# raw_input(' ')
+
+muscle_array = muscle_array - np.array(cutoffs)[None,:]
+muscle_array[muscle_array<0.] = 0. 
+
+# plt.figure(3)
+
+# for i,muscle in enumerate(filtered_muscle_cols):
+# 	ax = plt.subplot(gs[i+1,:-2])
+# 	plt.plot(times,muscle_array[:,i])
+# 	ax.invert_yaxis()
+# 	plt.ylabel(muscle)
+# 	# ax.yaxis.set_label_position("right")
+# 	# plt.subplots_adjust(hspace=1.5)
+# 	plt.tight_layout()
+# 	ax.set_yticks([])
+# 	ax.set_yticklabels('')
+
+
+
 
 
 #This part displays the interval -2 to +7 of the specified trial  
@@ -99,6 +130,11 @@ times = flydf['t'][time_window_inds]
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
+muscle_array = muscle_array - np.array(cutoffs)[None,:]
+muscle_array[muscle_array<0.] = 0. 
+
+max_values = np.max(muscle_array,axis=0)
+min_values = np.min(muscle_array,axis=0)
 
 
 
