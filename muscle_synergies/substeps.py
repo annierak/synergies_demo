@@ -51,6 +51,15 @@ def shift_matrix_columns(column_shift,A,transpose=False):
         to_return = to_return.T
     return to_return
 
+def shift_matrix_columns_2(column_shift,A,new_cols):
+    A_copy = np.copy(A)
+    n_rows,n_cols = np.shape(A_copy)
+    padding = np.zeros((n_rows,new_cols))
+    double_padded = np.hstack((padding,A_copy,padding))
+    starting_index = (new_cols) + (-1)*column_shift
+    ending_index = starting_index+new_cols
+    to_return = double_padded[:,starting_index:ending_index]
+    return to_return
 
 def update_delay(M,W,c,S):
     N,D,T = np.shape(W)
@@ -317,15 +326,15 @@ def match_synergy_estimates_td(W,W_est):
     return true_syn_partners
 
 def construct_Theta(N,T):
-	Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
-	for i in range(1,N+1):
-	    for t in range(1-T,T):
-	        rows,columns = np.indices((N*T,T))
-	        to_fill = (rows+1-(i-1)*T)==(columns+1-t)
-	        to_fill[0:(i-1)*T,:] = 0.
-	        to_fill[i*T:,:] = 0.
-	        Theta[i-1,util.t_shift_to_index(t,T),:,:] = to_fill
-	return Theta
+    Theta = np.zeros((N,2*T-1,N*T,T)) #shape of each Theta_i(t) is N*T x T
+    for i in range(1,N+1):
+        for t in range(1-T,T):
+            rows,columns = np.indices((N*T,T))
+            to_fill = (rows+1-(i-1)*T)==(columns+1-t)
+            to_fill[0:(i-1)*T,:] = 0.
+            to_fill[i*T:,:] = 0.
+            Theta[i-1,util.t_shift_to_index(t,T),:,:] = to_fill
+    return Theta
 
 
 

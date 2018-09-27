@@ -14,6 +14,9 @@ import sys
 # This script implements and tests the multiplicative update NMF algorithm for time-varying muscle synergies
 # ==========
 
+#reproducible results
+np.random.seed(6)
+
 #constants
 D = 5 #number of muscles
 synergy_time = 1.  #Synergy duration
@@ -61,6 +64,11 @@ plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
 
 #Construct true coeffients
 true_c = np.random.uniform(c_min,c_max,(S,N))
+#Construct true delays
+true_delays = np.floor(np.random.uniform(-T/2,T/2,(S,N))).astype(int)
+# true_delays = np.zeros((S,N)).astype(int)
+print('delays: '+str(true_delays[display_episode,:]))
+
 plt.figure(1)
 for i in range(N):
     ax = true_W_axes[i]
@@ -68,16 +76,37 @@ for i in range(N):
         true_c[display_episode,i])[:5],color='purple',
         horizontalalignment='center',transform=ax.transAxes,
         fontsize=25)
+    ax.text(-0.3,0.5,str(
+        true_delays[display_episode,i])[:5],color='purple',
+        horizontalalignment='center',transform=ax.transAxes,
+        fontsize=15)
+
 W = np.moveaxis(W,0,2)
 
-#Construct true delays & shift W
-true_delays = np.random.uniform(-T/3,T/3,(S,N))
+
+# #Test the new shifting function
+# plt.figure(667)
+# plt.subplot(2,1,1)
+# plt.imshow(W[0,:,:],interpolation='none')
+# shifts = [-20,-7,6,20,50]
+# for shift in shifts:
+#     plt.subplot(2,1,2)
+#     plt.clf
+#     plt.imshow(substeps.shift_matrix_columns_2(shift,W[0,:,:],2*T),interpolation='none')
+#     plt.title('Shift of '+str(shift))
+#     plt.show()
+#     raw_input(' ')
+
+# shift W according to selected delays
 shifted_W = np.array(
-    [[substeps.shift_matrix_columns(int(true_delays[s,i]),W[i,:,:]) \
+    [[substeps.shift_matrix_columns_2(int(true_delays[s,i]),W[i,:,:],2*T) \
         for i in range(N)] for s in range(S)])
 
+
 #Now make M by adding each of these scaled shifted N synergies muscle-wise
-pre_sum_M = shifted_W[None,:,:,:]*true_c[:,:,None,None]
+pre_sum_M = shifted_W[:,:,:,:]*true_c[:,:,None,None]
+
+
 M = np.squeeze(np.sum(pre_sum_M,axis=1)) #M is S x D x T
 
 #Construct estimator object
@@ -121,7 +150,7 @@ for i in range(N):
     ims.append(im)
     pltuls.strip_ticks(ax)
 plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
-c_texts = []
+c_texts = [];delay_texts = []
 for i in range(N):
     max_W_est = np.max(synergy_estimator.W_est_stacked[i,:,:])
     max_W = np.max(W[i,:,:])
@@ -132,8 +161,26 @@ for i in range(N):
         horizontalalignment='center',transform=ax.transAxes,
         fontsize=25)
     c_texts.append(c_text)
+    delay_text = ax.text(-0.3,0.5,str(
+        synergy_estimator.delays[display_episode,i])[:3],color='purple',
+        horizontalalignment='center',transform=ax.transAxes,
+        fontsize=15)
+    delay_texts.append(delay_text)
 
 
+plt.figure(333)
+cax = plt.subplot(1,2,1)
+c_dots = plt.scatter(true_c.flatten(),synergy_estimator.c_est.flatten())
+plt.plot([0,1],[0,1],color='r',linewidth=3)
+plt.title('C_est vs True C')
+tax = plt.subplot(1,2,2)
+t_dots = plt.scatter(true_delays.flatten(),synergy_estimator.delays.flatten())
+plt.plot([-(2./3)*T,(2./3)*T],[-(2./3)*T,(2./3)*T],color='r',linewidth=3)
+plt.ylim([-T,T])
+plt.xlim([-T,T])
+plt.title('Est Delay vs True Delay')
+cax.set_aspect('equal')
+tax.set_aspect('equal')
 #Prepare shapes for updates
 # stacked_M = np.copy(M)
 # M = util.spread(M)  #reshape it so that it's D x T*S
@@ -144,8 +191,10 @@ counter = 1
 while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
 
     print('--------------ITERATION: '+str(counter)+'---------------')
+    # debug = (counter>5)
+    debug = False
     #Update delays and compute updated error
-    synergy_estimator.update_delays() #size of delays (t) is S x N
+    synergy_estimator.update_delays(debug=debug) #size of delays (t) is S x N
     R2 = synergy_estimator.compute_R2()
     print('R2 after delay update: '+str(R2))
 
@@ -186,14 +235,31 @@ while abs(1.-synergy_estimator.compute_R2())>synergy_estimator.error_threshold:
         im.set_clim(vmin=0,vmax=max_value)
 
     # Display the c_est, scaled to match the true_c magnitude
+
+    max_W_est = np.max(W_est[true_syn_partners,:,:],axis=(1,2))
+    max_W = np.max(W,axis=(1,2))
+    c_est_scaled = synergy_estimator.c_est[:,true_syn_partners]*max_W_est[None,:]/max_W[None,:]
+    #This version is the scaling the c_est to the value it would be if its W_est had a peak matching the peak of the true W
     plt.figure(1)
     for i in range(N):
-        max_W_est = np.max(W_est[true_syn_partners[i],:,:])
-        max_W = np.max(W[i,:,:])
-        c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
-        # c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]
         c_text = c_texts[i]
-        c_text.set_text(str(c_est_scaled)[:5])
+        c_text.set_text(str(c_est_scaled[display_episode,i])[:5])
+
+        #Debugging------
+        # max_W_est = np.max(synergy_estimator.W_est_stacked[true_syn_partners[i],:,:])
+        # max_W = np.max(W[i,:,:])
+        # c_est_scaled = synergy_estimator.c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
+        # c_text.set_text(str(c_est_scaled)[:5])
+        #----------
+
+        delay_text = delay_texts[i]
+        delay = int(synergy_estimator.delays[display_episode,true_syn_partners[i]])
+        delay_text.set_text(str(delay)[:5])
+
+    #c and delays scatter plot
+    c_dots.set_offsets(np.c_[true_c.flatten(),c_est_scaled.flatten()])
+    t_dots.set_offsets(np.c_[true_delays.flatten(),synergy_estimator.delays[:,true_syn_partners].flatten()])
+
 
     #video frame collection
     if len(sys.argv)>1:
