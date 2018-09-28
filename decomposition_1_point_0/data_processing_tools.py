@@ -22,9 +22,11 @@ def ca_baseline_flight(muscle_array,filtered_muscle_cols,plot=False):
     cutoffs = np.zeros(num_muscles)
     for i in range(num_muscles):
         if plot:
-        	plt.subplot(gs[i,-2])
-    	n,bins,_ = plt.hist(muscle_array[:,i],bins=30)
-    	diffs = np.diff(n)
+            plt.subplot(gs[i,-2])
+            n,bins,_ = plt.hist(muscle_array[:,i],bins=30)
+        else:
+           n,bins = np.histogram(muscle_array[:,i],bins=30)
+        diffs = np.diff(n)
     	cutoff_index = np.argmax(diffs)
         #hg3 signal is behaving differently so account for that
     	if filtered_muscle_cols[i][0:3]=='hg3':
