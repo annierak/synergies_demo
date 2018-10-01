@@ -5,9 +5,10 @@ import figurefirst as fifi
 import flylib as flb
 from matplotlib import gridspec
 import data_processing_tools as dpt
+import sys
 
+# fly_num = 1544
 fly_num = 1548
-# fly_num = 1549
 
 try:
     fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
@@ -30,10 +31,11 @@ num_muscles = len(filtered_muscle_cols)
 
 dt = (flydf['t'][1]-flydf['t'][0])
 
+if len(np.unique(flydf['t']))!=len(flydf['t']):
+    print('Watch out time stamps are not unique')
+    sys.exit()
 
-#Look at first T seconds of muscle activity
-
-T = 600.
+T = np.max(flydf['t'])
 end_index = np.where(flydf['t']>=T)[0][0]
 start_index = 0
 time_window_inds = np.arange(start_index,end_index)
@@ -42,10 +44,11 @@ times = flydf['t'][time_window_inds]
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
+flydf = dpt.raw_ca_to_dff(flydf)
+raw_input(' ')
 
-
-cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols,plot=True)
-
+cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,plot=True)
+plt.show()
 muscle_array = muscle_array - np.array(cutoffs)[None,:]
 muscle_array[muscle_array<0.] = 0.
 muscle_maxes = np.max(muscle_array,axis=0)
@@ -65,11 +68,11 @@ split_inds = np.concatenate([np.array([-1]),split_inds,np.array([len(trial_inds)
 trial_inds_list = []
 
 for i in range(len(split_inds)-1):
-	trial_inds_list.append(trial_inds[split_inds[i]+1:split_inds[i+1]])
+    trial_inds_list.append(trial_inds[split_inds[i]+1:split_inds[i+1]])
 
 for trial_inds_set in trial_inds_list:
-	# print(len(trial_inds_set))
-	print(np.unique(flydf['stimulus'][trial_inds_set]))
+    # print(len(trial_inds_set))
+    print(np.unique(flydf['stimulus'][trial_inds_set]))
 
 num_episodes = len(trial_inds_list)
 
@@ -79,21 +82,21 @@ trial_kinematics = np.zeros_like(trial_times)
 
 
 for j,trial_inds in enumerate(trial_inds_list):
-	#Fill trial_activity_array with baseline subtracted Ca data for each trial
-	trial_start_index = trial_inds[0]
-	time_window_inds = np.arange(trial_start_index + int(np.floor(
-		static_time/dt)), trial_start_index + int(np.floor(
-			(static_time+motion_length)/dt)))
-	times = flydf['t'][time_window_inds]
-	trial_times[j,:] = times
+    #Fill trial_activity_array with baseline subtracted Ca data for each trial
+    trial_start_index = trial_inds[0]
+    time_window_inds = np.arange(trial_start_index + int(np.floor(
+        static_time/dt)), trial_start_index + int(np.floor(
+            (static_time+motion_length)/dt)))
+    times = flydf['t'][time_window_inds]
+    trial_times[j,:] = times
 
-	trial_kinematics[j,:] = flydf.loc[time_window_inds,['amp_diff']].values.squeeze()
-	muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
+    trial_kinematics[j,:] = flydf.loc[time_window_inds,['amp_diff']].values.squeeze()
+    muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
-	muscle_array = muscle_array - np.array(cutoffs)[None,:]
-	muscle_array[muscle_array<0.] = 0.
+    muscle_array = muscle_array - np.array(cutoffs)[None,:]
+    muscle_array[muscle_array<0.] = 0.
 
-	trial_activity_array[j,:,:] = muscle_array.T
+    trial_activity_array[j,:,:] = muscle_array.T
 
 
 #Normalize data to max of 1 per muscle per trial
@@ -103,22 +106,22 @@ trial_activity_array[np.isnan(trial_activity_array)] = 0.
 
 for j,trial_inds in enumerate(trial_inds_list):
 
-	plt.figure(100+j,figsize=(5,20))
+    plt.figure(100+j,figsize=(5,20))
 
-	for i,muscle in enumerate(filtered_muscle_cols):
-		ax = plt.subplot(num_muscles+1,1,i+2)
-		plt.plot(trial_times[j,:],trial_activity_array[j,i,:])
-		plt.ylim([0,1])
-		plt.ylabel(muscle,rotation=0,horizontalalignment='right',position=(4,1),
+    for i,muscle in enumerate(filtered_muscle_cols):
+        ax = plt.subplot(num_muscles+1,1,i+2)
+        plt.plot(trial_times[j,:],trial_activity_array[j,i,:])
+        plt.ylim([0,1])
+        plt.ylabel(muscle,rotation=0,horizontalalignment='right',position=(4,1),
             color='r')
-		ax.yaxis.set_label_position("right")
-		plt.tight_layout()
-		# ax.set_yticks([])
-		# ax.set_yticklabels('')
-	ax = plt.subplot(num_muscles+1,1,1)
-	plt.ylabel('Kinematics')
-	plt.plot(times,trial_kinematics[j,:])
-	ax.yaxis.set_label_position("right")
+        ax.yaxis.set_label_position("right")
+        plt.tight_layout()
+        # ax.set_yticks([])
+        # ax.set_yticklabels('')
+    ax = plt.subplot(num_muscles+1,1,1)
+    plt.ylabel('Kinematics')
+    plt.plot(times,trial_kinematics[j,:])
+    ax.yaxis.set_label_position("right")
 
 
 #Take mean across time

@@ -59,7 +59,7 @@ cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols)
 # plt.show()
 # raw_input(' ')
 
-muscle_array = muscle_array - np.array(cutoffs)[None,:]
+muscle_array = muscle_array - np.array(cutoffs[0,:])[None,:]
 muscle_array[muscle_array<0.] = 0.
 
 # plt.figure(3)
@@ -91,7 +91,7 @@ times = flydf['t'][time_window_inds]
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
-muscle_array = muscle_array - np.array(cutoffs)[None,:]
+muscle_array = muscle_array - np.array(cutoffs[0,:])[None,:]
 muscle_array[muscle_array<0.] = 0.
 
 max_values = np.max(muscle_array,axis=0)
