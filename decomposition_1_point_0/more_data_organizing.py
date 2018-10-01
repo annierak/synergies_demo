@@ -79,7 +79,7 @@ trial_activity_array = np.zeros((num_episodes,num_muscles,int(np.ceil(motion_len
 
 for j,trial_inds in enumerate(trial_inds_list):
 	trial_start_index = trial_inds[0]
-	time_window_inds = np.arange(trial_start_index + int(np.floor( 
+	time_window_inds = np.arange(trial_start_index + int(np.floor(
 		static_time/dt)), trial_start_index + int(np.floor(
 			(static_time+motion_length)/dt)))
 	times = flydf['t'][time_window_inds]
@@ -97,7 +97,8 @@ for j,trial_inds in enumerate(trial_inds_list):
 	for i,muscle in enumerate(filtered_muscle_cols):
 		ax = plt.subplot(num_muscles+1,1,i+2)
 		plt.plot(times,muscle_array[:,i])
-		plt.ylabel(muscle)
+		plt.ylabel(muscle,rotation=0,horizontalalignment='right',position=(4,1),
+            color='r')
 		ax.yaxis.set_label_position("right")
 		plt.tight_layout()
 		# ax.set_yticks([])
@@ -107,13 +108,17 @@ for j,trial_inds in enumerate(trial_inds_list):
 	plt.plot(times,kinematics)
 	ax.yaxis.set_label_position("right")
 
+#Normalize data to max of 1 per muscle per trial
 muscle_maxes = np.max(trial_activity_array,axis=2)
 trial_activity_array = trial_activity_array/(muscle_maxes[:,:,None])
 trial_activity_array[np.isnan(trial_activity_array)] = 0.
 
-
+#Take mean across time
 avg_trial_activity_array = np.mean(trial_activity_array,axis=2)
 print(np.shape(avg_trial_activity_array))
 plt.figure(666)
+fig, ax = plt.subplots()
 plt.imshow(avg_trial_activity_array.T,interpolation='none')
+ax.set_yticks(range(num_muscles))
+ax.set_yticklabels(filtered_muscle_cols)
 plt.show()
