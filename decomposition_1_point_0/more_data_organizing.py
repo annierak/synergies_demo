@@ -42,21 +42,20 @@ times = flydf['t'][time_window_inds]
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
-max_values = np.max(muscle_array,axis=0)
-min_values = np.min(muscle_array,axis=0)
 
 
-cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols)
+cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols,plot=True)
 
 muscle_array = muscle_array - np.array(cutoffs)[None,:]
 muscle_array[muscle_array<0.] = 0.
-
+muscle_maxes = np.max(muscle_array,axis=0)
+print(np.shape(muscle_maxes))
 
 
 #Begin filtering for specific trial type
-trial_str = 'ol_blocks, g_x=-12, g_y=0, b_x=0, b_y=0, ch=1'
+trial_str = 'ol_blocks, g_x=12, g_y=0, b_x=0, b_y=0, ch=1'
 static_time = 3.
-motion_length = 2.
+motion_length = 2. #Time after stimulus onset selected to analyze
 
 
 trial_inds=np.squeeze(np.where(flydf['stimulus']==trial_str))
@@ -68,23 +67,27 @@ trial_inds_list = []
 for i in range(len(split_inds)-1):
 	trial_inds_list.append(trial_inds[split_inds[i]+1:split_inds[i+1]])
 
-# for trial_inds_set in trial_inds_list:
-# 	print(len(trial_inds_set))
-# 	print(np.unique(flydf['stimulus'][trial_inds_set]))
+for trial_inds_set in trial_inds_list:
+	# print(len(trial_inds_set))
+	print(np.unique(flydf['stimulus'][trial_inds_set]))
 
 num_episodes = len(trial_inds_list)
 
 trial_activity_array = np.zeros((num_episodes,num_muscles,int(np.ceil(motion_length/dt))))
+trial_times = np.zeros((num_episodes,int(np.ceil(motion_length/dt))))
+trial_kinematics = np.zeros_like(trial_times)
 
 
 for j,trial_inds in enumerate(trial_inds_list):
+	#Fill trial_activity_array with baseline subtracted Ca data for each trial
 	trial_start_index = trial_inds[0]
 	time_window_inds = np.arange(trial_start_index + int(np.floor(
 		static_time/dt)), trial_start_index + int(np.floor(
 			(static_time+motion_length)/dt)))
 	times = flydf['t'][time_window_inds]
+	trial_times[j,:] = times
 
-	kinematics = flydf.loc[time_window_inds,['amp_diff']].values
+	trial_kinematics[j,:] = flydf.loc[time_window_inds,['amp_diff']].values.squeeze()
 	muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
 	muscle_array = muscle_array - np.array(cutoffs)[None,:]
@@ -92,11 +95,20 @@ for j,trial_inds in enumerate(trial_inds_list):
 
 	trial_activity_array[j,:,:] = muscle_array.T
 
+
+#Normalize data to max of 1 per muscle per trial
+trial_activity_array = trial_activity_array/(muscle_maxes[None,:,None])
+trial_activity_array[np.isnan(trial_activity_array)] = 0.
+
+
+for j,trial_inds in enumerate(trial_inds_list):
+
 	plt.figure(100+j,figsize=(5,20))
 
 	for i,muscle in enumerate(filtered_muscle_cols):
 		ax = plt.subplot(num_muscles+1,1,i+2)
-		plt.plot(times,muscle_array[:,i])
+		plt.plot(trial_times[j,:],trial_activity_array[j,i,:])
+		plt.ylim([0,1])
 		plt.ylabel(muscle,rotation=0,horizontalalignment='right',position=(4,1),
             color='r')
 		ax.yaxis.set_label_position("right")
@@ -105,13 +117,9 @@ for j,trial_inds in enumerate(trial_inds_list):
 		# ax.set_yticklabels('')
 	ax = plt.subplot(num_muscles+1,1,1)
 	plt.ylabel('Kinematics')
-	plt.plot(times,kinematics)
+	plt.plot(times,trial_kinematics[j,:])
 	ax.yaxis.set_label_position("right")
 
-#Normalize data to max of 1 per muscle per trial
-muscle_maxes = np.max(trial_activity_array,axis=2)
-trial_activity_array = trial_activity_array/(muscle_maxes[:,:,None])
-trial_activity_array[np.isnan(trial_activity_array)] = 0.
 
 #Take mean across time
 avg_trial_activity_array = np.mean(trial_activity_array,axis=2)

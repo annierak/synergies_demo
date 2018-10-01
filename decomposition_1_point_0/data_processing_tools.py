@@ -19,7 +19,7 @@ def ca_baseline_flight(muscle_array,filtered_muscle_cols,plot=False):
     if plot:
         plt.figure(2,figsize=(10,40))
         gs= matplotlib.gridspec.GridSpec(num_muscles,6)
-    cutoffs = np.zeros(num_muscles)
+    cutoffs = np.zeros(2,num_muscles)
     for i in range(num_muscles):
         if plot:
             plt.subplot(gs[i,-2])
@@ -30,19 +30,22 @@ def ca_baseline_flight(muscle_array,filtered_muscle_cols,plot=False):
     	cutoff_index = np.argmax(diffs)
         #hg3 signal is behaving differently so account for that
     	if filtered_muscle_cols[i][0:3]=='hg3':
-    		cutoffs[i]= 0
+    		cutoffs[0,i]= 0
     	else:
-    		cutoffs[i] = bins[cutoff_index]
+    		cutoffs[0,i] = bins[cutoff_index]
+
+        cutoffs[1,i] = np.percentile(muscle_array[:,i],95)
+
+
         if plot:
         	ax=plt.subplot(gs[i,-1])
         	plt.plot(n)
         	plt.plot(np.diff(n))
         	plt.subplot(gs[i,:-2])
         	plt.plot(muscle_array[:,i])
-
-        	plt.plot(cutoffs[i]*np.ones_like(muscle_array[:,i]),color='r')
-
-        	plt.ylabel(filtered_muscle_cols[i])
+            plt.plot(cutoffs[0,i]*np.ones_like(muscle_array[:,i]),color='r')
+            plt.plot(cutoffs[1,i]*np.ones_like(muscle_array[:,i]),color='r')
+            plt.ylabel(filtered_muscle_cols[i])
         	plt.ylim([min_values[i],max_values[i]])
         	plt.tight_layout()
         	ax.set_yticks([])
