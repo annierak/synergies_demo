@@ -38,27 +38,28 @@ if len(np.unique(flydf['t']))!=len(flydf['t']):
 T = np.max(flydf['t'])
 end_index = np.where(flydf['t']>=T)[0][0]
 start_index = 0
-time_window_inds = np.arange(start_index,end_index)
+time_window_inds = np.arange(start_index,end_index+1)
 times = flydf['t'][time_window_inds]
 
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
-flydf = dpt.raw_ca_to_dff(flydf)
-raw_input(' ')
+# flydf = dpt.raw_ca_to_dff(flydf)
+# raw_input(' ')
 
-cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,plot=True)
-plt.show()
-muscle_array = muscle_array - np.array(cutoffs)[None,:]
+cutoffs = dpt.ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,times,plot=True)
+# plt.show()
+
+muscle_array = muscle_array - np.array(cutoffs[0,:])[None,:]
 muscle_array[muscle_array<0.] = 0.
 muscle_maxes = np.max(muscle_array,axis=0)
 print(np.shape(muscle_maxes))
 
 
 #Begin filtering for specific trial type
-trial_str = 'ol_blocks, g_x=12, g_y=0, b_x=0, b_y=0, ch=1'
-static_time = 3.
-motion_length = 2. #Time after stimulus onset selected to analyze
+trial_str = 'ol_blocks, g_x=0, g_y=4, b_x=0, b_y=0, ch=1'
+static_time = 2.
+motion_length = 50. #Time after stimulus onset selected to analyze
 
 
 trial_inds=np.squeeze(np.where(flydf['stimulus']==trial_str))
@@ -93,7 +94,7 @@ for j,trial_inds in enumerate(trial_inds_list):
     trial_kinematics[j,:] = flydf.loc[time_window_inds,['amp_diff']].values.squeeze()
     muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
 
-    muscle_array = muscle_array - np.array(cutoffs)[None,:]
+    muscle_array = muscle_array - np.array(cutoffs[0,:])[None,:]
     muscle_array[muscle_array<0.] = 0.
 
     trial_activity_array[j,:,:] = muscle_array.T
@@ -120,7 +121,7 @@ for j,trial_inds in enumerate(trial_inds_list):
         # ax.set_yticklabels('')
     ax = plt.subplot(num_muscles+1,1,1)
     plt.ylabel('Kinematics')
-    plt.plot(times,trial_kinematics[j,:])
+    plt.plot(trial_times[j,:],trial_kinematics[j,:])
     ax.yaxis.set_label_position("right")
 
 

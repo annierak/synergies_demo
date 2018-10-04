@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import time
 
-def ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,plot=False):
+def ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,time,plot=False):
     #For a time x muscle array, returns an estimate of the calcium
     #baseline value for each muscle
 
@@ -43,9 +43,9 @@ def ca_baseline_flight(muscle_array,filtered_muscle_cols,kinematics,plot=False):
             plt.plot(n)
             plt.plot(np.diff(n))
             plt.subplot(gs[i+1,:-2])
-            plt.plot(muscle_array[:,i])
-            plt.plot(cutoffs[0,i]*np.ones_like(muscle_array[:,i]),color='r')
-            plt.plot(cutoffs[1,i]*np.ones_like(muscle_array[:,i]),color='r')
+            plt.plot(time,muscle_array[:,i])
+            plt.plot(time,cutoffs[0,i]*np.ones_like(muscle_array[:,i]),color='r')
+            plt.plot(time,cutoffs[1,i]*np.ones_like(muscle_array[:,i]),color='r')
             plt.ylabel(filtered_muscle_cols[i])
             plt.ylim([min_values[i],max_values[i]])
             plt.tight_layout()
