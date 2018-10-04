@@ -21,5 +21,10 @@ except(OSError):
 flydf = fly.construct_dataframe()
 
 #Look at first T seconds of muscle activity
-T = 600
-dpt.plot_muscles_by_time(flydf,T,fly.muscles_phasic)
+trial = 'ol_blocks, g_x=0, g_y=4, b_x=0, b_y=0, ch=1'
+pre_trial_time = 3.
+duration = 10.
+dpt.plot_muscles_by_trial(flydf,trial,fly.muscles_phasic,pre_trial_time,duration,show_kinematics=True)
+
+T = 60
+dpt.plot_muscles_by_time(flydf,T,fly.muscles_right,start_time=40)
