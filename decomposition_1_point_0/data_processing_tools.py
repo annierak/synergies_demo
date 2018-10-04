@@ -66,3 +66,49 @@ def raw_ca_to_dff(flydf):
     # plt.plot(np.squeeze(non_flight_frames),'o')
     # plt.show()
     # baseline_F = flydf.[]
+
+def plot_muscles_by_time(flydf,end_time,which_muscles,start_time=0.,show_kinematics=True):
+    end_index = np.where(flydf['t']>=end_time)[0][0]
+    start_index = np.where(flydf['t']>=start_time)[0][0]
+    time_window_inds = np.arange(start_index,end_index)
+    times = flydf['t'][time_window_inds]
+
+    kinematics = flydf.loc[time_window_inds,['amp_diff']].values
+    muscle_array = flydf.loc[time_window_inds,which_muscles].values
+
+    max_values = np.max(muscle_array,axis=0)
+    min_values = np.min(muscle_array,axis=0)
+
+    num_muscles = len(which_muscles)
+
+    plt.figure(2,figsize=(10,40))
+    gs= matplotlib.gridspec.GridSpec(num_muscles+int(show_kinematics),6)
+    for i in range(num_muscles):
+        ax = plt.subplot(gs[i+int(show_kinematics),:])
+        plt.plot(times,muscle_array[:,i])
+        plt.ylabel(which_muscles[i],rotation=0,position=(0.,0.),#transform=plt.gca().transAxes,
+            color='r')
+        plt.ylim([min_values[i],max_values[i]])
+        # plt.tight_layout()
+        plt.subplots_adjust(left=0.01,right=0.9,top=.95,bottom=.05,hspace=0.3)
+        ax.set_yticks([])
+        ax.set_yticklabels('')
+        ax.yaxis.set_label_position("right")
+        ax.yaxis.set_label_coords(1.05, 0.5)
+
+
+
+    if show_kinematics:
+        ax = plt.subplot(gs[0,:])
+        ax.set_yticks([])
+        ax.set_yticklabels('')
+        plt.plot(times,kinematics)
+        plt.ylabel('Kinematics',rotation=0)
+        ax.yaxis.set_label_position("right")
+        ax.yaxis.set_label_coords(1.05, 0.5)
+
+
+    plt.show()
+
+
+# def plot_muscles_by_trial(flydf,show_kinematics,trial_type=None):
