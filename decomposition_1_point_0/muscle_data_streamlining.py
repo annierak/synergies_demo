@@ -10,8 +10,8 @@ from matplotlib import gridspec
 import data_processing_tools as dpt
 import sys
 
-fly_num = 1544
-# fly_num = 1548
+# fly_num = 1544
+fly_num = 1548
 
 try:
     fly = flb.NetFly(fly_num,rootpath='/home/annie/imager/media/imager/FlyDataD/FlyDB/')
@@ -20,11 +20,21 @@ except(OSError):
 
 flydf = fly.construct_dataframe()
 
-#Look at first T seconds of muscle activity
-trial = 'ol_blocks, g_x=0, g_y=4, b_x=0, b_y=0, ch=1'
-pre_trial_time = 3.
-duration = 10.
-dpt.plot_muscles_by_trial(flydf,trial,fly.muscles_phasic,pre_trial_time,duration,show_kinematics=True)
+#Look at T seconds of muscle activity
 
-T = 60
-dpt.plot_muscles_by_time(flydf,T,fly.muscles_right,start_time=40)
+T = 100
+fig = 1
+dpt.plot_muscles_by_time(fig,flydf,T,fly.muscles_right,start_time=40,show_x_position=True)
+
+trial = 'ol_blocks, g_x=-12, g_y=0, b_x=0, b_y=0, ch=1'
+pre_trial_time = 3.
+duration = 6.
+
+fig = 2
+flydf = dpt.baseline_by_prestim(flydf,fly.muscles)
+dpt.plot_muscles_by_time(fig,flydf,T,fly.muscles_right,start_time=40,show_x_position=True)
+plt.show()
+
+dpt.plot_muscles_by_trial(flydf,trial,fly.muscles_phasic,pre_trial_time,
+duration,show_kinematics=True,show_x_position=True)
+plt.show()
