@@ -39,7 +39,7 @@ T = np.max(flydf['t'])
 end_index = np.where(flydf['t']>=T)[0][0]
 start_index = 0
 time_window_inds = np.arange(start_index,end_index+1)
-times = flydf['t'][time_window_inds]
+times = flydf['t'][time_window_qinds]
 
 kinematics = flydf.loc[time_window_inds,['amp_diff']].values
 muscle_array = flydf.loc[time_window_inds,filtered_muscle_cols].values
