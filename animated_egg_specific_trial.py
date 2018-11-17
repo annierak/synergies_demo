@@ -85,7 +85,7 @@ for cull in cull_list:
 dpi = 600
 
 #--------------HERE IS WHERE YOU SPECIFY THE TRIAL-----------------------
-trial_str = 'cl_blocks, g_x=-1, g_y=0, b_x=0, b_y=0, ch=1'
+trial_str = 'ol_stripe, g_x=70, g_y=0, b_x=0, b_y=0, ch=0'
 counter=np.where(flydf['stimulus']==trial_str)[0][0]
 t=flydf.iloc[counter]['t']
 #------------------------------------------------------------------------
