@@ -4,6 +4,7 @@ import scipy
 import scipy.signal
 
 import flylib as flb
+
 from flylib import util
 import local_project_functions as lpf
 
@@ -31,3 +32,5 @@ print(type(signal))
 
 plt.plot(signal[0:1000])
 # plt.show()
+
+
