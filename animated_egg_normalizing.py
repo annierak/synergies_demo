@@ -114,6 +114,7 @@ while t < simulation_time:
     std_mtrx = centered_mtrx/(centered_mtrx_std)
     
     cor_mtrx = np.dot(std_mtrx,std_mtrx.T)
+    
 
 
     plt.figure()
