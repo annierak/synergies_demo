@@ -62,7 +62,7 @@ for i in range(N):
         horizontalalignment='center')
     if i==N-1:
         ax.set_ylabel('Muscles',rotation=90)
-    ax.text(-1.5,0.5,'Synergy '+str(i+1),transform=ax.transAxes)
+    ax.text(-1.0,0.5,'Synergy '+str(i+1),transform=ax.transAxes)
 
 plt.tight_layout()
 
