@@ -1,8 +1,8 @@
 import substeps
 import util
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.animation as animate
 import matplotlib.pyplot as plt
 import plotting_utls as pltuls
@@ -48,16 +48,26 @@ if len(sys.argv)>1:
     metadata = {'title':video_name,}
     writer = FFMpegWriter(fps=10, metadata=metadata)
     writer.setup(fig, video_name+'.mp4', 500)
+    # writer.setup(fig, video_name+'.gif', 500)
 #------------------------------------------
 for i in range(N):
     ax = plt.subplot2grid((N,2),(i,0))
     plt.imshow(W[:,i,:].T,interpolation='none',
     aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
     pltuls.strip_ticks(ax)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if i==0:
+        ax.text(0.5,1.1,'True Synergies',transform=ax.transAxes,
+        horizontalalignment='center')
+    if i==N-1:
+        ax.set_ylabel('Muscles',rotation=90)
+    ax.text(-1.5,0.5,'Synergy '+str(i+1),transform=ax.transAxes)
 
-plt.text(0.25,0.95,'True W',transform=plt.gcf().transFigure)
+plt.tight_layout()
 
 # plt.show()
+# input()
 
 #Make some coeffients c and multiply W by that coefficient for each synergy
 
@@ -65,12 +75,15 @@ display_episode = 0
 
 true_c = np.random.uniform(c_min,c_max,(S,N))
 plt.figure(1)
-for i in range(N):
-    ax = plt.gcf().get_axes()[i]
-    ax.text(0.5,0.5,str(
-        true_c[display_episode,i])[:5],color='purple',
-        horizontalalignment='center',transform=ax.transAxes,
-        fontsize=25)
+
+#coefficients
+# for i in range(N):
+#     ax = plt.gcf().get_axes()[i]
+#     ax.text(0.5,0.5,str(
+#         true_c[display_episode,i])[:5],color='purple',
+#         horizontalalignment='center',transform=ax.transAxes,
+#         fontsize=25)
+
 W = np.moveaxis(W,0,2)
 
 pre_sum_M = W[None,:,:,:]*true_c[:,:,None,None]
@@ -125,6 +138,8 @@ for i in range(1,N+1):
 # error = np.inf
 
 unexp_var_threshold = 1e-5
+unexp_var_threshold = 2e-3
+
 # R2_diff_threshold = 1e-7
 # R2 = np.zeros(2)
 SS_tot = substeps.compute_total_sum_squares(M)
@@ -147,27 +162,33 @@ for i in range(N):
     im = plt.imshow(
         W_est[i,:,:],interpolation='none',
         aspect=T/D,cmap='Greys_r',vmin=0,vmax=amp_max)
-    plt.colorbar()
+    # plt.colorbar()
     ims.append(im)
     pltuls.strip_ticks(ax)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if i==0:
+        ax.text(0.5,1.1,'Re-Estimated Synergies',transform=ax.transAxes,
+        horizontalalignment='center')
+
 
 #Display scaled estimated c
-c_texts = []
-for i in range(N):
-    max_W_est = np.max(W_est[i,:,:])
-    max_W = np.max(W[i,:,:])
-    c_est_scaled = true_c[display_episode,i]*max_W/max_W_est
-    ax = W_est_axes[i]
-    c_text = ax.text(0.5,0.5,str(
-        c_est_scaled)[:3],color='purple',
-        horizontalalignment='center',transform=ax.transAxes,
-        fontsize=25)
-    c_texts.append(c_text)
+# c_texts = []
+# for i in range(N):
+#     max_W_est = np.max(W_est[i,:,:])
+#     max_W = np.max(W[i,:,:])
+#     c_est_scaled = true_c[display_episode,i]*max_W/max_W_est
+#     ax = W_est_axes[i]
+#     c_text = ax.text(0.5,0.5,str(
+#         c_est_scaled)[:3],color='purple',
+#         horizontalalignment='center',transform=ax.transAxes,
+#         fontsize=25)
+#     c_texts.append(c_text)
 
 
 # plt.show()
 
-plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
+# plt.text(0.65,0.95,'Estim. W',transform=plt.gcf().transFigure)
 
 stacked_M = np.copy(M)
 M = util.spread(M)  #reshape it so that it's D x T*S
@@ -262,19 +283,19 @@ while abs(1.-R2)>unexp_var_threshold:
     # print('TRUE SYN PARTNERS: '+str(true_syn_partners))
     #Then, display them
     for i in range(N):
-    	im = ims[i]
+        im = ims[i]
         max_value = np.max(W_est[true_syn_partners[i],:,:])
-    	im.set_data(util.normalize(W_est[true_syn_partners[i],:,:]))
+        im.set_data(util.normalize(W_est[true_syn_partners[i],:,:]))
         im.set_clim(vmin=0,vmax=amp_max)
 
     # Display the c_est, scaled to match the true_c magnitude
     plt.figure(1)
-    for i in range(N):
-        max_W_est = np.max(W_est[true_syn_partners[i],:,:])
-        max_W = np.max(W[i,:,:])
-        c_est_scaled = c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
-        c_text = c_texts[true_syn_partners[i]]
-        c_text.set_text(str(c_est_scaled)[:5])
+    # for i in range(N):
+    #     max_W_est = np.max(W_est[true_syn_partners[i],:,:])
+    #     max_W = np.max(W[i,:,:])
+    #     c_est_scaled = c_est[display_episode,true_syn_partners[i]]*max_W_est/max_W
+    #     c_text = c_texts[true_syn_partners[i]]
+    #     c_text.set_text(str(c_est_scaled)[:5])
 
     if len(sys.argv)>1:
         writer.grab_frame()
@@ -291,11 +312,11 @@ while abs(1.-R2)>unexp_var_threshold:
         line = lines[d]
         line.set_ydata(M_est_ep[d,:])
     plt.draw()
-    plt.pause(0.02)
+    # plt.pause(0.02)
     counter+=1
 
 
 
 
-plt.show()
-raw_input(' ')
+# plt.show()
+# raw_input(' ')
