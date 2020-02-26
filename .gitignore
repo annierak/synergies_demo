@@ -8,3 +8,4 @@
 *.html
 *.svg
 *.pdf
+.ipynb_checkpoints
